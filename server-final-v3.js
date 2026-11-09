@@ -74,14 +74,21 @@ room.currentPlayer = 0;
 room.openedCount = 0;
 room.timeLeft = 25;
 room._lastPickKey = null;
+room._pickCounter = 0;
 // Send deck FIRST, then matched
 broadcast(room, { type: 'deck_sync', deck: room.deck });
 setTimeout(() => {
-broadcast(room, {
+// FIXED: send matched INDIVIDUALLY so each player knows his own myId
+room.players.forEach(pl => {
+send(pl.ws, {
 type: 'matched',
+myId: pl.id,
+myPlayer: pl.id,
+yourId: pl.id,
 players: playersPayload(room),
 currentPlayer: 1,
 deck: room.deck
+});
 });
 startTimer(room);
 }, 150);
@@ -163,8 +170,12 @@ return;
 // --- Pick card - FIXED: single source, advances turn immediately ---
 if (data.type === 'pick_card') {
 const room = ws._room; if (!room || !room.started) return;
+// FIXED: only current player can pick - prevents both thinking it's their turn
+const currentPlayerObj = room.players[room.currentPlayer];
+if (!currentPlayerObj || currentPlayerObj.ws !== ws) { send(ws, { type: 'error', message: 'ليس دورك', currentPlayer: room.currentPlayer + 1 }); return; }
 // Ignore duplicate pick for same turn (same card, same player)
-const pickKey = room.currentPlayer + ':' + data.cardIndex + ':' + ws._playerId;
+room._pickCounter = (room._pickCounter || 0) + 1;
+const pickKey = room._pickCounter + ':' + data.cardIndex + ':' + ws._playerId + ':' + room.currentPlayer;
 if (room._lastPickKey === pickKey) return;
 room._lastPickKey = pickKey;
 // Save scores sent by picker (after effect). Scores array is in players order.
