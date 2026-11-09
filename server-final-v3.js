@@ -1,4 +1,4 @@
-// Battle Cards - Server V2 - Shared Deck + Server Authoritative Scores + 25s Timer
+// Battle Cards - Server V2 FIXED TURNS - per-room IDs - Shared Deck + Server Authoritative Scores + 25s Timer
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -101,7 +101,7 @@ const code = makeCode();
 const room = { code, players: [], need, started: false, scores: {}, currentPlayer: 0, deck: null, timer: null, openedCount: 0, timeLeft: 25, _lastPickKey: null };
 rooms.set(code, room);
 picked.forEach(e => {
-const p = { id: nextId++, name: e.name || ('لاعب ' + (room.players.length + 1)), ws: e.ws };
+const p = { id: room.players.length + 1, name: e.name || ('لاعب ' + (room.players.length + 1)), ws: e.ws }; // FIX: per-room ID 1,2
 room.players.push(p);
 e.ws._room = room;
 e.ws._playerId = p.id;
@@ -134,7 +134,7 @@ if (data.type === 'create_room') {
 const code = makeCode();
 const room = { code, players: [], need: data.need || 2, started: false, scores: {}, currentPlayer: 0, deck: null, timer: null, openedCount: 0, timeLeft: 25, _lastPickKey: null };
 rooms.set(code, room);
-const p = { id: nextId++, name: data.name || 'لاعب 1', ws };
+const p = { id: 1, name: data.name || 'لاعب 1', ws }; // FIX: host is always 1
 room.players.push(p);
 ws._room = room; ws._playerId = p.id;
 send(ws, { type: 'room_created', code, players: playersPayload(room), need: room.need });
@@ -146,7 +146,7 @@ const room = rooms.get(String(data.code));
 if (!room) { send(ws, { type: 'error', message: 'الغرفة غير موجودة' }); return; }
 if (room.started) { send(ws, { type: 'error', message: 'الجولة بدأت بالفعل' }); return; }
 if (room.players.length >= room.need) { send(ws, { type: 'error', message: 'الغرفة ممتلئة' }); return; }
-const p = { id: nextId++, name: data.name || ('لاعب ' + (room.players.length + 1)), ws };
+const p = { id: room.players.length + 1, name: data.name || ('لاعب ' + (room.players.length + 1)), ws }; // FIX: joiner is 2,3..
 room.players.push(p);
 ws._room = room; ws._playerId = p.id;
 broadcast(room, { type: 'player_joined', players: playersPayload(room), count: room.players.length, need: room.need });
