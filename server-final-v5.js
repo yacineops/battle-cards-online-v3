@@ -1,241 +1,168 @@
-// Battle Cards - WebSocket Server
-// Deploy on Render as Web Service: Build: npm install, Start: node server.js
+// Battle Cards - Server Final V5
+// File: server-final-v5.js
+// Render: Build: npm install, Start: node server-final-v5.js
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const WebSocket = require('ws');
 const PORT = process.env.PORT || 10000;
-const wss = new WebSocket.Server({ port: PORT });
-
-console.log('Battle Cards WS running on', PORT);
-
+const server = http.createServer((req, res) => {
+if (req.url !== '/' && req.url !== '/index.html') { res.writeHead(404); res.end('Not found'); return; }
+fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
+if (err) { res.writeHead(500); res.end('index.html not found - upload index.html'); return; }
+res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+res.end(data);
+});
+});
+const wss = new WebSocket.Server({ server });
+server.listen(PORT, () => console.log('Battle Cards V5 running on', PORT));
 let nextClientId = 1;
 let rooms = new Map();
 let waitingQueue = [];
 let clients = new Set();
-
 function send(ws, obj){ try{ if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(obj)); }catch(e){} }
 function broadcast(room, obj, except=null){ room.players.forEach(p=>{ if(p.ws!==except) send(p.ws, obj); }); }
 function genCode(){ return String(Math.floor(100000 + Math.random()*900000)); }
-
-function makeDeck(level){
-  let cards=[];
-  const pts=[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5,-10,-10];
-  pts.forEach(v=>cards.push({type:'points', value:v}));
-  const specials=[
-    {type:'nextLevel', icon:'🚪', label:'الانتقال للمستوى التالي'},
-    {type:'reverse', icon:'🔄', label:'قلب الاتجاه'},
-    {type:'reverse', icon:'↩️', label:'قلب الاتجاه'},
-    {type:'skip', icon:'⏭️', label:'تخطي اللاعب'},
-    {type:'steal', icon:'💰', label:'سرقة 3 نقاط', amount:3},
-    {type:'shield', icon:'🛡️', label:'درع النقاط'},
-    {type:'replay', icon:'♻️', label:'إعادة التفعيل'},
-    {type:'bomb', icon:'💣', label:'خصم 3 نقاط', amount:3},
-    {type:'shuffle', icon:'🔀', label:'إعادة قلب البطاقات'},
-    {type:'reset', icon:'🧹', label:'تصفير الجميع'},
-    {type:'doubleChoice', icon:'🃏', label:'اختيار مزدوج'},
-    {type:'exchange', icon:'🔃', label:'تبادل النقاط'},
-    {type:'resetShield', icon:'🔐', label:'حماية الرصيد'},
-    {type:'points', value:7, icon:'➕', label:'نقاط +7'},
-    {type:'points', value:4, icon:'➕', label:'نقاط +4'},
-    {type:'resetPlayer', icon:'💥', label:'تصفير لاعب'},
-    {type:'exchangePlayers', icon:'🔀', label:'تبادل لاعبين'},
-    {type:'bombShield', icon:'🛡️', label:'درع القنبلة'},
-    {type:'stealShield', icon:'🛡️', label:'درع السرقة'},
-    {type:'reflect', icon:'🪞', label:'عكس الهجوم'},
-    {type:'doubleSelf', icon:'✖️2', label:'ضاعف رصيدك'},
-    {type:'doubleTarget', icon:'🎯', label:'مضاعفة لاعب'},
-    {type:'freeze', icon:'🧊', label:'تجميد لاعب'},
-    {type:'stealAll', icon:'🦹', label:'سرقة أرصدة الخصوم'},
-    {type:'bombAll', icon:'💣', label:'قنبلة الخصوم −5'},
-  ];
-  specials.forEach(s=>cards.push(s));
-  for(let i=cards.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [cards[i],cards[j]]=[cards[j],cards[i]]; }
-  return cards.slice(0,45);
+function makeDeck(){
+let cards=[];
+const pts=[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5,-10,-10];
+pts.forEach(v=>cards.push({type:'points', value:v}));
+const specials=[
+{type:'nextLevel', icon:'🚪', label:'الانتقال للمستوى التالي'},
+{type:'reverse', icon:'🔄', label:'قلب الاتجاه'},
+{type:'skip', icon:'⏭️', label:'تخطي اللاعب'},
+{type:'steal', icon:'💰', label:'سرقة 3 نقاط', amount:3},
+{type:'shield', icon:'🛡️', label:'درع النقاط'},
+{type:'replay', icon:'♻️', label:'إعادة التفعيل'},
+{type:'bomb', icon:'💣', label:'خصم 3 نقاط', amount:3},
+{type:'shuffle', icon:'🔀', label:'إعادة قلب البطاقات'},
+{type:'reset', icon:'🧹', label:'تصفير الجميع'},
+{type:'doubleChoice', icon:'🃏', label:'اختيار مزدوج'},
+{type:'exchange', icon:'🔃', label:'تبادل النقاط'},
+{type:'resetShield', icon:'🔐', label:'حماية الرصيد'},
+{type:'points', value:7, icon:'➕', label:'نقاط +7'},
+{type:'points', value:4, icon:'➕', label:'نقاط +4'},
+{type:'resetPlayer', icon:'💥', label:'تصفير لاعب'},
+{type:'exchangePlayers', icon:'🔀', label:'تبادل لاعبين'},
+{type:'bombShield', icon:'🛡️', label:'درع القنبلة'},
+{type:'stealShield', icon:'🛡️', label:'درع السرقة'},
+{type:'reflect', icon:'🪞', label:'عكس الهجوم'},
+{type:'doubleSelf', icon:'✖️2', label:'ضاعف رصيدك'},
+{type:'doubleTarget', icon:'🎯', label:'مضاعفة لاعب'},
+{type:'freeze', icon:'🧊', label:'تجميد لاعب'},
+{type:'stealAll', icon:'🦹', label:'سرقة أرصدة الخصوم'},
+{type:'bombAll', icon:'💣', label:'قنبلة الخصوم −5'},
+];
+specials.forEach(s=>cards.push(s));
+for(let i=cards.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [cards[i],cards[j]]=[cards[j],cards[i]]; }
+return cards.slice(0,45);
 }
-
 function startGame(room){
-  room.started=true;
-  room.level=1;
-  room.direction=1;
-  room.currentPlayer=0;
-  room.openedCards=0;
-  room.cards=makeDeck(1);
-  room.opened=new Set();
-  room.timer=15;
-  room.players.forEach(p=>p.score=0);
-  const payload={
-    type:'matched',
-    players: room.players.map(p=>({name:p.name, score:0})),
-    myPlayer: null,
-    currentPlayer: 1,
-    level: 1,
-    direction: 1,
-    cards: room.cards,
-    seconds: 15
-  };
-  room.players.forEach((p,idx)=>{
-    send(p.ws, {...payload, myPlayer: p.id});
-  });
-  startTimer(room);
+room.started=true; room.level=1; room.direction=1; room.currentPlayer=0; room.openedCards=0;
+room.cards=makeDeck(); room.opened=new Set(); room.timer=15;
+room.players.forEach(p=>p.score=0);
+room.players.forEach((p)=>{ send(p.ws, { type:'matched', players: room.players.map(x=>({name:x.name, score:0})), myPlayer: p.id, currentPlayer: 1, level: 1, direction: 1, cards: room.cards, seconds: 15 }); });
+startTimer(room);
 }
-
 function startTimer(room){
-  if(room.timerInterval) clearInterval(room.timerInterval);
-  room.timer=15;
-  room.timerInterval=setInterval(()=>{
-    if(!room.started) { clearInterval(room.timerInterval); return; }
-    room.timer--;
-    broadcast(room, {type:'timer', seconds: room.timer});
-    if(room.timer<=0){
-      room.timer=15;
-      room.currentPlayer=(room.currentPlayer+room.direction+room.players.length)%room.players.length;
-      broadcast(room, {type:'turn_skipped', currentPlayer: room.currentPlayer+1});
-      broadcast(room, {type:'game_state', players: room.players.map(p=>p.score), currentPlayer: room.currentPlayer+1, level: room.level, direction: room.direction, openedCards: room.openedCards});
-    }
-  }, 1000);
+if(room.timerInterval) clearInterval(room.timerInterval);
+room.timer=15;
+room.timerInterval=setInterval(()=>{
+if(!room.started){ clearInterval(room.timerInterval); return; }
+room.timer--;
+broadcast(room, {type:'timer', seconds: room.timer});
+if(room.timer<=0){
+room.timer=15;
+room.currentPlayer=(room.currentPlayer+room.direction+room.players.length)%room.players.length;
+broadcast(room, {type:'turn_skipped', currentPlayer: room.currentPlayer+1});
 }
-
-function checkGameOver(room){
-  if(room.openedCards>=room.cards.length){
-    clearInterval(room.timerInterval);
-    room.started=false;
-    let max=Math.max(...room.players.map(p=>p.score));
-    let winners=room.players.filter(p=>p.score===max);
-    broadcast(room, {
-      type:'game_over',
-      players: room.players.map(p=>({name:p.name, score:p.score})),
-      winner: winners.length===1 ? winners[0].name : ''
-    });
-  }
+}, 1000);
 }
-
-function removeFromQueue(ws){
-  waitingQueue=waitingQueue.filter(q=>q.ws!==ws);
-}
-
 function handleLeave(ws){
-  removeFromQueue(ws);
-  if(ws.roomCode){
-    let room=rooms.get(ws.roomCode);
-    if(room){
-      room.players=room.players.filter(p=>p.ws!==ws);
-      if(room.players.length===0){
-        if(room.timerInterval) clearInterval(room.timerInterval);
-        rooms.delete(ws.roomCode);
-      } else {
-        broadcast(room, {type:'opponent_disconnected', message:'غادر أحد اللاعبين'});
-        broadcast(room, {type:'room_players', current: room.players.length, total: room.playerCount, players: room.players.map(p=>p.name)});
-        if(room.started){
-          room.started=false;
-          if(room.timerInterval) clearInterval(room.timerInterval);
-        }
-      }
-    }
-    ws.roomCode=null;
-  }
+waitingQueue=waitingQueue.filter(q=>q.ws!==ws);
+if(ws.roomCode){
+let room=rooms.get(ws.roomCode);
+if(room){
+room.players=room.players.filter(p=>p.ws!==ws);
+if(room.players.length===0){ if(room.timerInterval) clearInterval(room.timerInterval); rooms.delete(ws.roomCode); }
+else {
+broadcast(room, {type:'opponent_disconnected', message:'غادر أحد اللاعبين'});
+broadcast(room, {type:'room_players', current: room.players.length, total: room.playerCount, players: room.players.map(p=>p.name)});
+if(room.started){ room.started=false; if(room.timerInterval) clearInterval(room.timerInterval); }
 }
-
+}
+ws.roomCode=null;
+}
+}
 wss.on('connection', (ws)=>{
-  ws.id=nextClientId++;
-  ws.name='لاعب';
-  clients.add(ws);
-  send(ws, {type:'online_count', count: clients.size});
-
-  ws.on('message', (data)=>{
-    let msg;
-    try{ msg=JSON.parse(String(data)); }catch(e){ return; }
-    let type=msg.type||msg.event;
-
-    if(type==='find_match'){
-      ws.name=msg.name||'لاعب';
-      let pc=parseInt(msg.playerCount||2);
-      ws.playerCount=pc;
-      let group=waitingQueue.filter(q=>q.playerCount===pc);
-      if(group.length>=pc-1){
-        let members=group.slice(0, pc-1);
-        members.forEach(m=> removeFromQueue(m.ws));
-        let code=genCode();
-        let room={code, playerCount:pc, players:[], started:false, level:1, direction:1, currentPlayer:0, openedCards:0, cards:[], timer:15};
-        let all=[...members, {ws, name: ws.name, playerCount: pc}];
-        all.forEach((m,idx)=>{
-          let p={ws:m.ws, name:m.name, score:0, id: m.ws.id};
-          m.ws.roomCode=code;
-          m.ws.room=room;
-          room.players.push(p);
-        });
-        rooms.set(code, room);
-        startGame(room);
-      } else {
-        waitingQueue.push({ws, name: ws.name, playerCount: pc});
-        send(ws, {type:'waiting', current: waitingQueue.filter(q=>q.playerCount===pc).length, total: pc});
-      }
-      return;
-    }
-
-    if(type==='cancel_search'){
-      removeFromQueue(ws);
-      return;
-    }
-
-    if(type==='create_room'){
-      ws.name=msg.name||'لاعب';
-      let pc=parseInt(msg.playerCount||2);
-      let code=genCode();
-      let room={code, playerCount:pc, players:[{ws, name: ws.name, score:0, id: ws.id}], started:false, level:1, direction:1, currentPlayer:0, openedCards:0, cards:[], timer:15};
-      ws.roomCode=code; ws.room=room;
-      rooms.set(code, room);
-      send(ws, {type:'room_created', roomCode: code, code: code});
-      send(ws, {type:'room_players', current:1, total:pc, players:[ws.name]});
-      return;
-    }
-
-    if(type==='join_room'){
-      ws.name=msg.name||'لاعب';
-      let code=String(msg.roomCode||msg.code||'');
-      let room=rooms.get(code);
-      if(!room){ send(ws, {type:'room_error', message:'الغرفة غير موجودة'}); return; }
-      if(room.started){ send(ws, {type:'room_error', message:'اللعبة بدأت'}); return; }
-      if(room.players.length>=room.playerCount){ send(ws, {type:'room_error', message:'الغرفة ممتلئة'}); return; }
-      room.players.push({ws, name: ws.name, score:0, id: ws.id});
-      ws.roomCode=code; ws.room=room;
-      broadcast(room, {type:'room_players', current: room.players.length, total: room.playerCount, players: room.players.map(p=>p.name)});
-      if(room.players.length===room.playerCount){
-        startGame(room);
-      }
-      return;
-    }
-
-    if(type==='pick_card'){
-      let room=ws.room;
-      if(!room || !room.started) return;
-      let idx=msg.cardIndex;
-      if(typeof idx!=='number' || !room.cards[idx] || room.opened.has(idx)) return;
-      room.opened.add(idx);
-      room.openedCards=room.opened.size;
-      let card=room.cards[idx];
-      let pIdx=room.players.findIndex(p=>p.ws===ws);
-      if(pIdx!==-1 && card.type==='points'){
-        room.players[pIdx].score+= (card.value||0);
-      }
-      broadcast(room, {type:'card_picked', cardIndex: idx, card: card, player: ws.id, by: ws.id}, ws);
-      broadcast(room, {type:'game_state', players: room.players.map(p=>p.score), currentPlayer: room.currentPlayer+1, level: room.level, direction: room.direction, openedCards: room.openedCards});
-      checkGameOver(room);
-      return;
-    }
-
-    if(type==='chat'){
-      let room=ws.room;
-      if(room) broadcast(room, {type:'chat', name: ws.name, message: String(msg.message||'').slice(0,200)}, ws);
-      return;
-    }
-
-    if(type==='leave_room' || type==='leave_game'){
-      handleLeave(ws);
-      return;
-    }
-  });
-
-  ws.on('close', ()=>{
-    clients.delete(ws);
-    handleLeave(ws);
-    clients.forEach(c=> send(c, {type:'online_count', count: clients.size}));
-  });
+ws.id=nextClientId++; ws.name='لاعب'; clients.add(ws);
+send(ws, {type:'online_count', count: clients.size});
+ws.on('message', (data)=>{
+let msg; try{ msg=JSON.parse(String(data)); }catch(e){ return; }
+let type=msg.type||msg.event;
+if(type==='create_room'){
+ws.name=msg.name||'لاعب';
+let pc=parseInt(msg.playerCount||2);
+let code=genCode();
+let room={code, playerCount:pc, players:[{ws, name: ws.name, score:0, id: ws.id}], started:false, level:1, direction:1, currentPlayer:0, openedCards:0, cards:[], timer:15};
+ws.roomCode=code; ws.room=room; rooms.set(code, room);
+send(ws, {type:'room_created', roomCode: code, code: code});
+send(ws, {type:'room_players', current:1, total:pc, players:[ws.name]});
+return;
+}
+if(type==='join_room'){
+ws.name=msg.name||'لاعب';
+let code=String(msg.roomCode||msg.code||'');
+let room=rooms.get(code);
+if(!room){ send(ws, {type:'room_error', message:'الغرفة غير موجودة'}); return; }
+if(room.started){ send(ws, {type:'room_error', message:'اللعبة بدأت'}); return; }
+if(room.players.length>=room.playerCount){ send(ws, {type:'room_error', message:'الغرفة ممتلئة'}); return; }
+room.players.push({ws, name: ws.name, score:0, id: ws.id});
+ws.roomCode=code; ws.room=room;
+broadcast(room, {type:'room_players', current: room.players.length, total: room.playerCount, players: room.players.map(p=>p.name)});
+if(room.players.length===room.playerCount) startGame(room);
+return;
+}
+if(type==='find_match'){
+ws.name=msg.name||'لاعب';
+let pc=parseInt(msg.playerCount||2);
+waitingQueue.push({ws, name: ws.name, playerCount: pc});
+let group=waitingQueue.filter(q=>q.playerCount===pc);
+if(group.length>=pc){
+let members=group.slice(0,pc);
+members.forEach(m=> waitingQueue=waitingQueue.filter(q=>q.ws!==m.ws));
+let code=genCode();
+let room={code, playerCount:pc, players:[], started:false, level:1, direction:1, currentPlayer:0, openedCards:0, cards:[], timer:15};
+members.forEach(m=>{ let p={ws:m.ws, name:m.name, score:0, id: m.ws.id}; m.ws.roomCode=code; m.ws.room=room; room.players.push(p); });
+rooms.set(code, room); startGame(room);
+} else { send(ws, {type:'waiting', current: group.length, total: pc}); }
+return;
+}
+if(type==='cancel_search'){ waitingQueue=waitingQueue.filter(q=>q.ws!==ws); return; }
+if(type==='pick_card'){
+let room=ws.room; if(!room || !room.started) return;
+let idx=msg.cardIndex;
+if(typeof idx!=='number' || !room.cards[idx] || room.opened.has(idx)) return;
+room.opened.add(idx); room.openedCards=room.opened.size;
+let card=room.cards[idx];
+let pIdx=room.players.findIndex(p=>p.ws===ws);
+if(pIdx!==-1 && card.type==='points') room.players[pIdx].score+=(card.value||0);
+broadcast(room, {type:'card_picked', cardIndex: idx, card: card, player: ws.id, by: ws.id}, ws);
+broadcast(room, {type:'game_state', players: room.players.map(p=>p.score), currentPlayer: room.currentPlayer+1, level: room.level, direction: room.direction, openedCards: room.openedCards});
+if(room.openedCards>=room.cards.length){
+clearInterval(room.timerInterval); room.started=false;
+let max=Math.max(...room.players.map(p=>p.score));
+let winners=room.players.filter(p=>p.score===max);
+broadcast(room, { type:'game_over', players: room.players.map(p=>({name:p.name, score:p.score})), winner: winners.length===1 ? winners[0].name : '' });
+}
+return;
+}
+if(type==='chat'){
+let room=ws.room;
+if(room) broadcast(room, {type:'chat', name: ws.name, message: String(msg.message||'').slice(0,200)}, ws);
+return;
+}
+if(type==='leave_room' || type==='leave_game'){ handleLeave(ws); return; }
+});
+ws.on('close', ()=>{ clients.delete(ws); handleLeave(ws); clients.forEach(c=> send(c, {type:'online_count', count: clients.size})); });
 });
