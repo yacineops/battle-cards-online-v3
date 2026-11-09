@@ -1,4 +1,4 @@
-// Battle Cards - Server V2 FIXED TURNS - per-room IDs - Shared Deck + Server Authoritative Scores + 25s Timer
+// Battle Cards - Server V2 - Shared Deck + Server Authoritative Scores + 25s Timer
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -74,21 +74,14 @@ room.currentPlayer = 0;
 room.openedCount = 0;
 room.timeLeft = 25;
 room._lastPickKey = null;
-room._pickCounter = 0;
 // Send deck FIRST, then matched
 broadcast(room, { type: 'deck_sync', deck: room.deck });
 setTimeout(() => {
-// FIXED: send matched INDIVIDUALLY so each player knows his own myId
-room.players.forEach(pl => {
-send(pl.ws, {
+broadcast(room, {
 type: 'matched',
-myId: pl.id,
-myPlayer: pl.id,
-yourId: pl.id,
 players: playersPayload(room),
 currentPlayer: 1,
 deck: room.deck
-});
 });
 startTimer(room);
 }, 150);
@@ -105,10 +98,10 @@ if (group.length >= need) {
 const picked = group.slice(0, need);
 picked.forEach(e => removeFromQueue(e.ws));
 const code = makeCode();
-const room = { code, players: [], need, started: false, scores: {}, currentPlayer: 0, deck: null, timer: null, openedCount: 0, timeLeft: 25, _lastPickKey: null };
+const room = { code, players: [], need, started: false, scores: {}, currentPlayer: 0, deck: null, timer: null, openedCount: 0, timeLeft: 25, _lastPickKey: null, level: 1 };
 rooms.set(code, room);
 picked.forEach(e => {
-const p = { id: room.players.length + 1, name: e.name || ('لاعب ' + (room.players.length + 1)), ws: e.ws }; // FIX: per-room ID 1,2
+const p = { id: nextId++, name: e.name || ('لاعب ' + (room.players.length + 1)), ws: e.ws };
 room.players.push(p);
 e.ws._room = room;
 e.ws._playerId = p.id;
@@ -139,9 +132,9 @@ return;
 // --- Create room ---
 if (data.type === 'create_room') {
 const code = makeCode();
-const room = { code, players: [], need: data.need || 2, started: false, scores: {}, currentPlayer: 0, deck: null, timer: null, openedCount: 0, timeLeft: 25, _lastPickKey: null };
+const room = { code, players: [], need: data.need || 2, started: false, scores: {}, currentPlayer: 0, deck: null, timer: null, openedCount: 0, timeLeft: 25, _lastPickKey: null, level: 1 };
 rooms.set(code, room);
-const p = { id: 1, name: data.name || 'لاعب 1', ws }; // FIX: host is always 1
+const p = { id: nextId++, name: data.name || 'لاعب 1', ws };
 room.players.push(p);
 ws._room = room; ws._playerId = p.id;
 send(ws, { type: 'room_created', code, players: playersPayload(room), need: room.need });
@@ -153,7 +146,7 @@ const room = rooms.get(String(data.code));
 if (!room) { send(ws, { type: 'error', message: 'الغرفة غير موجودة' }); return; }
 if (room.started) { send(ws, { type: 'error', message: 'الجولة بدأت بالفعل' }); return; }
 if (room.players.length >= room.need) { send(ws, { type: 'error', message: 'الغرفة ممتلئة' }); return; }
-const p = { id: room.players.length + 1, name: data.name || ('لاعب ' + (room.players.length + 1)), ws }; // FIX: joiner is 2,3..
+const p = { id: nextId++, name: data.name || ('لاعب ' + (room.players.length + 1)), ws };
 room.players.push(p);
 ws._room = room; ws._playerId = p.id;
 broadcast(room, { type: 'player_joined', players: playersPayload(room), count: room.players.length, need: room.need });
@@ -170,12 +163,8 @@ return;
 // --- Pick card - FIXED: single source, advances turn immediately ---
 if (data.type === 'pick_card') {
 const room = ws._room; if (!room || !room.started) return;
-// FIXED: only current player can pick - prevents both thinking it's their turn
-const currentPlayerObj = room.players[room.currentPlayer];
-if (!currentPlayerObj || currentPlayerObj.ws !== ws) { send(ws, { type: 'error', message: 'ليس دورك', currentPlayer: room.currentPlayer + 1 }); return; }
 // Ignore duplicate pick for same turn (same card, same player)
-room._pickCounter = (room._pickCounter || 0) + 1;
-const pickKey = room._pickCounter + ':' + data.cardIndex + ':' + ws._playerId + ':' + room.currentPlayer;
+const pickKey = room.currentPlayer + ':' + data.cardIndex + ':' + ws._playerId;
 if (room._lastPickKey === pickKey) return;
 room._lastPickKey = pickKey;
 // Save scores sent by picker (after effect). Scores array is in players order.
@@ -207,6 +196,8 @@ const room = ws._room; if (!room) return;
 if (Array.isArray(data.scores)) {
 room.players.forEach((pl, idx) => { room.scores[pl.id] = data.scores[idx] || 0; });
 }
+// FIX POINTS: broadcast new scores to ALL including sender, so both see identical scores
+broadcast(room, { type: 'score_update', players: playersPayload(room), scores: room.scores });
 // Do NOT advance turn here - pick_card already advanced it. Just rebroadcast scores.
 broadcast(room, {
 type: 'game_state',
@@ -234,6 +225,19 @@ removeFromQueue(ws);
 return;
 }
 // --- Leave room / game ---
+// FIX LEVEL: when one player levels up, move EVERYONE + new deck
+if (data.type === 'level_up' || data.type === 'next_level' || data.type === 'nextLevel') {
+const room = ws._room; if (!room) return;
+const newLevel = data.level ?? data.nextLevel ?? data.toLevel ?? ((room.level || 1) + 1);
+room.level = newLevel;
+room.deck = makeDeck();
+room.currentPlayer = 0; room.timeLeft = 25; room.openedCount = 0; room._lastPickKey = null;
+broadcast(room, { type: 'deck_sync', deck: room.deck, level: newLevel });
+broadcast(room, { type: 'level_up', level: newLevel, nextLevel: newLevel, deck: room.deck, currentPlayer: 1, players: playersPayload(room) });
+broadcast(room, { type: 'game_state', currentPlayer: 1, players: playersPayload(room), deck: room.deck, level: newLevel });
+startTimer(room);
+return;
+}
 if (data.type === 'leave_room' || data.type === 'leave_game') {
 const room = ws._room;
 if (room) {
