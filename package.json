@@ -1,7 +1,7 @@
 {
-"name": "battle-cards-online",
+"name": "battle-cards-server",
 "version": "1.0.0",
-"main": "server.js",
-"scripts": { "start": "node server.js" },
+"main": "server-final-v5.js",
+"scripts": { "start": "node server-final-v5.js" },
 "dependencies": { "ws": "^8.18.0" }
 }
