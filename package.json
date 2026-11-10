@@ -2,6 +2,6 @@
 "name": "battle-cards-server",
 "version": "1.0.0",
 "main": "server-final-v6.js",
-"scripts": { "start": "node server-final-v5.js" },
+"scripts": { "start": "node server-final-v6.js" },
 "dependencies": { "ws": "^8.18.0" }
 }
