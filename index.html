@@ -23,7 +23,6 @@ body{background:linear-gradient(160deg,#0f2027,#203a43,#2c5364);background-attac
 @keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(255,152,0,.3)}50%{box-shadow:0 0 16px rgba(255,152,0,.9)}}
 @keyframes pop{0%{transform:scale(.92)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes bigIn{0%{transform:scale(.2) rotate(-18deg);opacity:0}60%{transform:scale(1.12) rotate(3deg);opacity:1}100%{transform:scale(1)}}
-/* ===== FIX: CARDS BIG LIKE OFFLINE ===== */
 .cards-grid{flex:1 1 auto;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(9,1fr);gap:6px;margin:0;min-height:0;min-width:0}
 .card{height:auto;min-height:0;border-radius:12px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .45s}
 .card.opened{transform:rotateY(180deg)}
@@ -39,12 +38,12 @@ input{outline:none}
     <div id="root">
     </div>
     <script>
-/* ============ Battle Cards - FIXED index (V7 client) ============
- FIX 1: Scores NEVER calculated locally in online mode. Server is source of truth.
- FIX 2: Card reveal: card_picked -> mark opened for EVERYONE (no if by===myId check).
- FIX 3: Cards BIG: grid 5x9, same size offline & online, no tiny cards.
- FIX 4: WS URL: same host when deployed together, else Render WS.
- FIX 5: Target: client sends ABSOLUTE server id (targetBase=1), server converts.
+/* Battle Cards - FIXED V7.1 CLIENT
+ FIX: wsUrl -> s-online-v2.onrender.com (Render V7 live)
+ FIX: freeze = 1 (was 2) local + server
+ FIX: doubleChoice activation
+ FIX: avatar calc parentheses
+ FIX: points value visible
 */
 const AVATARS=["🦸","🦹","🧑‍🚀","🦸‍♀️","🦹‍♂️","🧙","🦸‍♂️","😎","🦁","🦄","🐉","👽"];
 const CARD_INFO={
@@ -78,9 +77,8 @@ function freshPlayers(n,bot){
   return Array.from({length:n},(_,i)=>({name:i===0?"أنت":(bot?"🤖 "+names[i-1]:(names[i-1]||("اللاعب "+(i+1)))),score:0,shield:0,bombShield:0,stealShield:0,resetShield:0,reflect:0,shieldReverse:0,shieldSkip:0,goldenShield:0,cancelShuffle:0,cancelReplay:0,freeze:0,avatar:AVATARS[i%AVATARS.length]}));
 }
 function shieldsText(p){ return [p.shield>0?`🛡️${p.shield>1?p.shield:""}`:"",p.goldenShield>0?"🏆":"",p.bombShield>0?"🧨":"",p.stealShield>0?"💰🛡️":"",p.resetShield>0?"🔐":"",p.reflect>0?"🪞":"",p.freeze>0?"🧊":""].filter(Boolean).join(" ")||"—"; }
-
 let S = {
-  screen:'home', mode:'offline', // offline | bot | online
+  screen:'home', mode:'offline',
   players:[], cards:[], level:1, direction:1, current:0,
   myIndex:0, online:false, bot:false,
   name:'اللاعب 1', playerCount:2, roomCode:'', roomInput:'',
@@ -92,8 +90,7 @@ let S = {
 };
 function toast(msg){ S.toast=msg; render(); clearTimeout(S.toastTimer); S.toastTimer=setTimeout(()=>{S.toast=''; render();},2400); }
 function wsUrl(){
-  try{ if(window.location.protocol.startsWith('http')) return (window.location.protocol==='https:'?'wss://':'ws://')+window.location.host; }catch(e){}
-  return 'wss://battle-cards-ws.onrender.com';
+  return 'wss://s-online-v2.onrender.com';
 }
 function wsConnect(){
   if(S.ws && (S.ws.readyState===WebSocket.OPEN||S.ws.readyState===WebSocket.CONNECTING)) return S.ws;
@@ -108,7 +105,6 @@ function wsConnect(){
   }catch(e){ S.wsStatus='error'; return null; }
 }
 function wsSend(m){ let ws=S.ws; if(ws && ws.readyState===WebSocket.OPEN){ try{ws.send(JSON.stringify(m))}catch(e){} } else { S.wsQueue.push(m); wsConnect(); } }
-
 function startLocal(n,bot){
   S.mode=bot?'bot':'offline'; S.bot=bot; S.online=false; S.myIndex=0;
   S.players=freshPlayers(n,bot); S.cards=deckFor(1); S.level=1; S.direction=1; S.current=0; S.seconds=15;
@@ -127,7 +123,6 @@ function checkEndLocal(){
   S.winnerText = win.length===1 ? `🏆 الفائز هو ${win[0].name} برصيد ${best} نقطة` : `🏆 تعادل بين: ${win.map(p=>p.name).join(' و ')} برصيد ${best} نقطة`;
   S.screen='result'; render();
 }
-// Local effect (offline/bot only — NEVER used in online mode)
 function applyLocalEffect(card, picker, target, first){
   let me=S.players[picker]; let t= target!=null?S.players[target]:null; let amt=card.amount!=null?card.amount:3;
   if(card.type==='points'){ let v=card.value||0; if(v<0 && me.shield>0){ me.shield--; toast(`🛡️ ${me.name} استخدم درع النقاط`); } else { me.score+=v; toast(v>0?`${me.name} حصل على +${v} نقطة 🎉`:`${me.name} خسر ${Math.abs(v)} نقطة 😬`); } }
@@ -163,17 +158,16 @@ function applyLocalEffect(card, picker, target, first){
     if(first!=null && t){ let a=S.players[first]; if(a && a!==t){ let tmp=a.score; a.score=t.score; t.score=tmp; toast(`تم تبادل ${a.name} و ${t.name}`); } }
     else if(t){ let tmp=me.score; me.score=t.score; t.score=tmp; toast('🔃 تم التبادل'); }
   }
-  else if(t && card.type==='freeze'){ t.freeze=2; toast(`🧊 تم تجميد ${t.name}`); }
+  else if(t && card.type==='freeze'){ t.freeze=1; toast(`🧊 تم تجميد ${t.name} - دور واحد`); }
   advanceLocal(1);
 }
-
 function pickCardLocal(idx){
   if(S.targetMode==='doubleChoice'){
     if(S.cards[idx].opened) return;
     S.cards[idx].opened=true;
     S.doubleChoicePick.push(idx);
     if(S.doubleChoicePick.length<2){ toast('🃏 اختر بطاقة ثانية'); render(); return; }
-    // player picks one of the two to activate — handled by clicking again on one of them
+    S.targetMode='doubleChoiceActivate';
     toast('🃏 اضغط على إحدى البطاقتين لتفعيلها'); render(); return;
   }
   if(S.targetMode==='doubleChoiceActivate'){
@@ -185,7 +179,6 @@ function pickCardLocal(idx){
   if(S.targetMode){ return; }
   let card=S.cards[idx]; if(card.opened) return;
   if(S.bot && S.current!==0){ toast('دور الحاسوب…'); return; }
-  if(!S.bot && S.current!==0 && S.mode==='offline'){ /* local hot-seat: anyone can play on their turn */ }
   card.opened=true; S.lastPicked=idx; S.bigCard=card;
   let need=['steal','bomb','doubleTarget','resetPlayer','exchange','exchangePlayers','freeze'];
   if(need.includes(card.type)){ S.targetMode=card.type; S.targetCardIndex=idx; S.targetFirst=null; toast('🎯 اختر لاعبًا'); render(); return; }
@@ -210,7 +203,6 @@ function botTurn(){
   if(!closed.length) return;
   let idx=closed[Math.floor(Math.random()*closed.length)];
   pickCardLocal(idx);
-  // bot target: if it needs target, pick random other player
   if(S.targetMode && S.targetMode!=='doubleChoice'){
     let others=S.players.map((_,i)=>i).filter(i=>i!==S.current);
     let t=others[Math.floor(Math.random()*others.length)];
@@ -223,20 +215,15 @@ function botTurn(){
     if(S.doubleChoicePick.length>=2){ S.targetMode='doubleChoiceActivate'; pickCardLocal(S.doubleChoicePick[0]); }
   }
 }
-
-/* ================= ONLINE ================= */
 function handleServer(o){
   if(!o||typeof o!=='object') return; let t=String(o.type||'');
   if(t==='waiting'){ if(Array.isArray(o.players)) S.waitingPlayers=o.players; if(o.current!=null) S.waitingCount=Number(o.current); if(o.total!=null) S.waitingTotal=Number(o.total); S.modal='searching'; render(); return; }
   if(t==='room_created'){ if(o.roomCode){ S.roomCode=String(o.roomCode); } S.modal='waitingRoom'; render(); return; }
   if(t==='room_players'){ if(Array.isArray(o.players)) S.waitingPlayers=o.players; if(o.current!=null) S.waitingCount=Number(o.current); if(o.total!=null) S.waitingTotal=Number(o.total); if(o.roomCode) S.roomCode=String(o.roomCode); if(S.modal==='join'||S.modal==='create'||S.modal==='searching') S.modal='waitingRoom'; render(); return; }
   if(t==='matched'||t==='game_start'||t==='game_started'||t==='start_game'){
-    // myIndex: server sends myPlayer / myPlayerId = 1-based
     let my = o.myPlayerId!=null?Number(o.myPlayerId)-1 : o.myPlayer!=null?Number(o.myPlayer)-1 : o.myIndex!=null?Number(o.myIndex):0;
     S.myIndex=Math.max(0,my); S.online=true; S.bot=false; S.mode='online';
-    S.players = (o.players||[]).map(p=>({name:p.name||'لاعب',score:Number(p.score)||0,shield:Number(p.shield)||0,bombShield:Number(p.bombShield)||0,stealShield:Number(p.stealShield)||0,resetShield:Number(p.resetShield)||0,reflect:Number(p.reflect)||0,shieldReverse:Number(p.shieldReverse)||0,shieldSkip:Number(p.shieldSkip)||0,goldenShield:Number(p.goldenShield)||0,cancelShuffle:Number(p.cancelShuffle)||0,cancelReplay:Number(p.cancelReplay)||0,freeze:Number(p.freeze)||0,avatar:AVATARS[(p.id||1)-1%AVATARS.length]||'🦸'}));
-    // Server players are in server order. For display we ROTATE so "me" is at position 0 — but we keep server indices for targets.
-    // Simpler & correct: keep server order, myIndex is absolute. Display uses server order, current is absolute.
+    S.players = (o.players||[]).map(p=>({name:p.name||'لاعب',score:Number(p.score)||0,shield:Number(p.shield)||0,bombShield:Number(p.bombShield)||0,stealShield:Number(p.stealShield)||0,resetShield:Number(p.resetShield)||0,reflect:Number(p.reflect)||0,shieldReverse:Number(p.shieldReverse)||0,shieldSkip:Number(p.shieldSkip)||0,goldenShield:Number(p.goldenShield)||0,cancelShuffle:Number(p.cancelShuffle)||0,cancelReplay:Number(p.cancelReplay)||0,freeze:Number(p.freeze)||0,avatar:AVATARS[((Number(p.id)||1)-1)%AVATARS.length]||'🦸'}));
     S.level=Number(o.level)||1; S.direction=Number(o.direction)||1;
     S.current = o.currentPlayer!=null ? (o.currentPlayerBase===1?Number(o.currentPlayer)-1:Number(o.currentPlayer)) : 0;
     S.cards = normalizeCards(o.cards||[]);
@@ -246,7 +233,6 @@ function handleServer(o){
   }
   if(t==='game_state'||t==='state'||t==='sync'){ applyGameState(o); return; }
   if(t==='card_picked'||t==='card_pick'||t==='pick_card'){
-    // FIX: reveal for EVERYONE — no by===myId check
     let idx=Number(o.cardIndex!=null?o.cardIndex:o.index);
     if(Number.isFinite(idx) && S.cards[idx]){
       let srvCard = o.card ? normalizeCards([o.card])[0] : null;
@@ -259,8 +245,8 @@ function handleServer(o){
   }
   if(t==='timer'||t==='time_update'||t==='tick'){ if(o.seconds!=null) S.seconds=Number(o.seconds); render(); return; }
   if(t==='turn_skipped'||t==='turn_timeout'){ toast('⏱️ تم تخطي الدور'); if(o.currentPlayer!=null) S.current=o.currentPlayerBase===1?Number(o.currentPlayer)-1:Number(o.currentPlayer); S.seconds=15; render(); return; }
-  if(t==='level_changed'){ S.level=Number(o.level)||S.level; if(Array.isArray(o.cards)&&o.cards.length) S.cards=normalizeCards(o.cards); S.targetMode=null; S.bigCard=null; toast('🎉 انتقل الجميع للمستوى '+S.level); render(); return; }
-  if(t==='cards_shuffled'){ if(Array.isArray(o.cards)&&o.cards.length) S.cards=normalizeCards(o.cards); toast('🔄 تم خلط البطاقات للجميع'); render(); return; }
+  if(t==='level_changed'){ S.level=Number(o.level)||S.level; if(Array.isArray(o.cards)&&o.cards.length) S.cards=normalizeCards(o.cards); S.targetMode=null; S.targetFirst=null; S.replayMode=false; S.bigCard=null; toast('🎉 انتقل الجميع للمستوى '+S.level); render(); return; }
+  if(t==='cards_shuffled'){ if(Array.isArray(o.cards)&&o.cards.length) S.cards=normalizeCards(o.cards); S.targetMode=null; S.targetFirst=null; S.replayMode=false; toast('🔄 تم خلط البطاقات للجميع'); render(); return; }
   if(t==='game_over'||t==='gameOver'){
     if(Array.isArray(o.players)&&o.players.length){ S.players=o.players.map(p=>({name:p.name||'لاعب',score:Number(p.score)||0,shield:Number(p.shield)||0,bombShield:Number(p.bombShield)||0,stealShield:Number(p.stealShield)||0,resetShield:Number(p.resetShield)||0,reflect:Number(p.reflect)||0,shieldReverse:Number(p.shieldReverse)||0,shieldSkip:Number(p.shieldSkip)||0,goldenShield:Number(p.goldenShield)||0,cancelShuffle:Number(p.cancelShuffle)||0,cancelReplay:Number(p.cancelReplay)||0,freeze:Number(p.freeze)||0,avatar:'🦸'})); }
     let best=Math.max(...S.players.map(p=>p.score)); let win=S.players.filter(p=>p.score===best);
@@ -285,9 +271,8 @@ function normalizeCards(arr){
   return out.slice(0,45);
 }
 function applyGameState(o){
-  // FIX: scores come ONLY from server. Never calculate locally.
   if(Array.isArray(o.players)&&o.players.length){
-    S.players=o.players.map(p=>({name:p.name||'لاعب',score:Number(p.score)||0,shield:Number(p.shield)||0,bombShield:Number(p.bombShield)||0,stealShield:Number(p.stealShield)||0,resetShield:Number(p.resetShield)||0,reflect:Number(p.reflect)||0,shieldReverse:Number(p.shieldReverse)||0,shieldSkip:Number(p.shieldSkip)||0,goldenShield:Number(p.goldenShield)||0,cancelShuffle:Number(p.cancelShuffle)||0,cancelReplay:Number(p.cancelReplay)||0,freeze:Number(p.freeze)||0,avatar:AVATARS[(Number(p.id)||1)-1%AVATARS.length]||'🦸'}));
+    S.players=o.players.map(p=>({name:p.name||'لاعب',score:Number(p.score)||0,shield:Number(p.shield)||0,bombShield:Number(p.bombShield)||0,stealShield:Number(p.stealShield)||0,resetShield:Number(p.resetShield)||0,reflect:Number(p.reflect)||0,shieldReverse:Number(p.shieldReverse)||0,shieldSkip:Number(p.shieldSkip)||0,goldenShield:Number(p.goldenShield)||0,cancelShuffle:Number(p.cancelShuffle)||0,cancelReplay:Number(p.cancelReplay)||0,freeze:Number(p.freeze)||0,avatar:AVATARS[((Number(p.id)||1)-1)%AVATARS.length]||'🦸'}));
   }
   if(o.level!=null) S.level=Number(o.level)||1;
   if(o.direction!=null) S.direction=Number(o.direction)||1;
@@ -296,15 +281,35 @@ function applyGameState(o){
   if(o.seconds!=null) S.seconds=Number(o.seconds);
   render();
 }
-function startOnlineTimer(){ clearInterval(S.timerId); S.timerId=setInterval(()=>{ if(S.screen!=='game'||!S.online) return; /* server drives timer via timer messages; local countdown is display only */ },1000); }
-
+function startOnlineTimer(){ clearInterval(S.timerId); S.timerId=setInterval(()=>{ if(S.screen!=='game'||!S.online) return; },1000); }
 function pickCardOnline(idx){
   let card=S.cards[idx]; if(!card||card.opened) return;
   if(S.current!==S.myIndex){ toast(`انتظر دورك - دور ${S.players[S.current]?.name||'اللاعب الحالي'}`); return; }
+  if(S.targetMode==='doubleChoice'){
+    if(card.opened) return;
+    S.doubleChoicePick.push(idx);
+    S.cards[idx]={...S.cards[idx], opened:true};
+    if(S.doubleChoicePick.length<2){ toast('🃏 اختر بطاقة ثانية'); render(); return; }
+    S.targetMode='doubleChoiceActivate';
+    toast('🃏 اضغط على وحدة لتفعيلها'); render(); return;
+  }
+  if(S.targetMode==='doubleChoiceActivate'){
+    if(!S.doubleChoicePick.includes(idx)) return;
+    let firstCardIdx=S.targetCardIndex;
+    S.targetMode=null; S.doubleChoicePick=[];
+    wsSend({type:'pick_card', cardIndex:firstCardIdx, choiceIndex:idx, name:S.name});
+    return;
+  }
+  if(S.replayMode){
+    if(!card.opened) return;
+    S.replayMode=false;
+    wsSend({type:'pick_card', cardIndex:S.targetCardIndex, replayIndex:idx, name:S.name});
+    return;
+  }
+  if(card.type==='doubleChoice'){ S.targetMode='doubleChoice'; S.targetCardIndex=idx; S.doubleChoicePick=[]; toast('🃏 اكشف بطاقتين'); render(); return; }
+  if(card.type==='replay'){ S.targetMode='replay'; S.targetCardIndex=idx; S.replayMode=true; toast('♻️ اختر بطاقة مكشوفة'); render(); return; }
   let need=['steal','bomb','doubleTarget','resetPlayer','exchange','exchangePlayers','freeze'];
   if(need.includes(card.type)){ S.targetMode=card.type; S.targetCardIndex=idx; S.targetFirst=null; toast('🎯 اختر لاعبًا'); render(); return; }
-  // Optimistic reveal is OK, but server card_picked is authoritative and will re-sync
-  // Do NOT calculate score locally.
   wsSend({type:'pick_card', cardIndex:idx, name:S.name});
   toast('بانتظار السيرفر…'); render();
 }
@@ -317,13 +322,10 @@ function chooseTargetOnline(targetServerIdx){
   if(first!=null) msg.first=first+1, msg.firstBase=1;
   wsSend(msg); toast('بانتظار السيرفر…'); render();
 }
-
-/* ================= RENDER ================= */
 function playerCard(i, layout){
   let p=S.players[i]; if(!p) return '<div></div>';
   let isCurrent = i===S.current;
-  let isTargetable = !!S.targetMode && i!==S.myIndex && !(S.targetMode==='exchangePlayers' && S.targetFirst!=null && i===S.targetFirst);
-  // In online mode, target click uses SERVER index i. In local mode, same.
+  let isTargetable = !!S.targetMode && (i!==S.myIndex || S.targetMode==='exchangePlayers') && !(S.targetMode==='exchangePlayers' && S.targetFirst!=null && i===S.targetFirst);
   let cls='player'+(isCurrent?' current':'')+(isTargetable?' targetSelectable':'');
   let badge = isCurrent ? `<div style="background:#00e676;color:#06281a;font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;white-space:nowrap">${S.online?(i===S.myIndex?'⭐ دورك':'⭐ دوره'):'⭐ دورك'}</div>` : '';
   let inner = `<div style="font-size:28px;line-height:1;cursor:pointer" onclick="changeAvatar(${i})">${p.avatar}</div>
@@ -334,7 +336,7 @@ function playerCard(i, layout){
   return `<div dir="rtl" onclick="onPlayerClick(${i})" class="${cls} domino-edge" style="width:min(360px,calc(100vw - 20px));height:58px;justify-self:center;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 10px;box-sizing:border-box;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);cursor:${isTargetable?'pointer':'default'};position:relative;min-width:0;flex-wrap:nowrap;overflow:hidden">${inner}</div>`;
 }
 function onPlayerClick(i){
-  if(S.online){ if(!S.targetMode) return; if(i===S.myIndex) return; chooseTargetOnline(i); return; }
+  if(S.online){ if(!S.targetMode) return; if(i===S.myIndex && S.targetMode!=='exchangePlayers') return; chooseTargetOnline(i); return; }
   if(!S.targetMode) return; if(i===S.current) return; chooseTargetLocal(i);
 }
 function changeAvatar(i){ if(S.online && i!==S.myIndex) return; S.players[i].avatar=AVATARS[(AVATARS.indexOf(S.players[i].avatar)+1)%AVATARS.length]; render(); }
@@ -346,14 +348,13 @@ function cardsHtml(){
       <div class="face back">🃏</div>
       <div class="face front" style="background:${c.type==='points'?(c.value||0)>0?'linear-gradient(135deg,#c8e6c9,#a5d6a7)':'linear-gradient(135deg,#ffcdd2,#ef9a9a)':'linear-gradient(135deg,#fff3e0,#ffcc80)'}">
         <div class="icon">${inf.icon}</div>
-        ${c.type!=='points'?`<div class="lbl">${inf.label}</div>`:''}
+        ${c.type==='points'?`<div class="lbl" style="font-size:14px">${c.value>0?'+'+c.value:c.value}</div>`:c.type!=='points'?`<div class="lbl">${inf.label}</div>`:''}
         ${sel?'<div style="font-size:9px;font-weight:900;color:#ff6f00">مختارة ✓</div>':''}
       </div></div>`;
   }).join('');
 }
 function onCardClick(i){
   if(S.online){ pickCardOnline(i); return; }
-  // local doubleChoice activation
   if(S.targetMode==='doubleChoice' && S.doubleChoicePick.length>=2){ pickCardLocal(i); return; }
   if(S.targetMode==='doubleChoiceActivate'){ pickCardLocal(i); return; }
   pickCardLocal(i);
