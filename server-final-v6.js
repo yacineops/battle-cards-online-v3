@@ -1,385 +1,370 @@
-// Battle Cards - Server Final V7 - FIXED
-// freeze = 1, doubleChoice + replay online, targetBase=1, game_state after every pick
+// Battle Cards - Online Server V6 (final)
+// - Keeps card revealed for everyone
+// - Enforces turns
+// - Unified timer (server-side)
+// - If a player leaves, others can continue
+// - Serves index.html if present, otherwise WS OK text
+// Start Command on Render: node server-final-v6.js
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const WebSocket = require('ws');
 const PORT = process.env.PORT || 10000;
-const server = http.createServer((req,res)=>{ res.writeHead(200,{'Content-Type':'text/plain'}); res.end('Battle Cards WS V7 OK'); });
-const wss = new WebSocket.Server({ server });
-function deckFor(level){
-let cs=[]; const push=(t,v,a)=>{let c={type:t,opened:false}; if(v!=null)c.value=v; if(a!=null)c.amount=a; cs.push(c);};
-let vals = level===1?[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5,-10]:level===2?[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5]:[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5];
-vals.forEach(v=>push('points',v));
-let sp = level===1 ? [['nextLevel'],['reverse'],['reverse'],['skip'],['skip'],['steal',null,3],['steal',null,3],['shield'],['shield'],['replay'],['bomb',null,3],['bomb',null,3],['shuffle'],['reset'],['doubleChoice'],['exchange'],['resetShield'],['points',7],['points',4],['resetPlayer'],['exchangePlayers'],['bombShield'],['stealShield'],['reflect'],['doubleSelf'],['doubleTarget']] : level===2 ? [['nextLevel'],['doubleTarget'],['doubleSelf'],['reverse'],['skip'],['resetPlayer'],['exchange'],['exchangePlayers'],['freeze'],['reset'],['stealAll'],['reflect'],['steal',null,5],['replay'],['reverseBalances'],['shieldSteal'],['resetShield'],['shieldReverse'],['shieldSkip'],['goldenShield'],['doubleChoice'],['randomBalances'],['bombAll'],['cancelShuffle'],['cancelReplay'],['shuffle'],['nextLevel']] : [['doubleTarget'],['doubleSelf'],['reverse'],['skip'],['resetPlayer'],['exchange'],['exchangePlayers'],['freeze'],['reset'],['stealAll'],['reflect'],['steal',null,5],['replay'],['reverseBalances'],['shieldSteal'],['resetShield'],['shieldReverse'],['shieldSkip'],['goldenShield'],['doubleChoice'],['randomBalances'],['bombAll'],['cancelShuffle'],['cancelReplay'],['randomPoints'],['shuffle']];
-sp.forEach(s=>push(s[0],s[1],s[2]));
-while(cs.length<45) cs.push({type:'points',value:[1,3,5,-2][cs.length%4],opened:false});
-cs=cs.slice(0,45);
-for(let i=cs.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1)); [cs[i],cs[j]]=[cs[j],cs[i]];}
-return cs;
+// ---------- Deck generation (same spirit as original game, 45 cards) ----------
+let cardId = 1;
+function mk(type, value, amount) {
+return { id: cardId++, type, value: value ?? null, amount: amount ?? null, opened: false };
 }
-function freshPlayers(names){
-return names.map((n,i)=>({id:i+1,name:n||('اللاعب '+(i+1)),score:0,shield:0,bombShield:0,stealShield:0,resetShield:0,reflect:0,shieldReverse:0,shieldSkip:0,goldenShield:0,cancelShuffle:0,cancelReplay:0,freeze:0}));
+function makeDeck(level) {
+cardId = 1;
+let cards = [];
+// points cards
+const pointsVals = [1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5,-10,-10];
+pointsVals.forEach(v => cards.push(mk('points', v)));
+// specials - level 1 base
+const specials = [
+'nextLevel','reverse','reverse','skip','skip',
+'steal','steal','shield','shield','replay',
+'bomb','bomb','shuffle','reset','doubleChoice',
+'exchange','resetShield','resetPlayer','exchangePlayers',
+'bombShield','stealShield','reflect','doubleSelf','doubleTarget'
+];
+specials.forEach(t => {
+let amt = null;
+if (t === 'steal') amt = 3;
+if (t === 'bomb') amt = 3;
+cards.push(mk(t, null, amt));
+});
+// level 2+ extras
+if (level >= 2) {
+['freeze','stealAll','reverseBalances','shieldSteal','shieldReverse','shieldSkip','goldenShield','doubleChoice','randomBalances','bombAll','cancelShuffle','cancelReplay','randomPoints'].forEach(t => cards.push(mk(t)));
 }
-let waiting = []; // {ws,name,playerCount}
-let rooms = new Map(); // code -> game
-let wsToGame = new Map(); // ws -> {code, idx}
-function send(ws,o){ try{ if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(o)); }catch(e){} }
-function broadcast(game,o){ game.players.forEach(p=>{ if(p.ws) send(p.ws,o); }); }
-function roomCodeGen(){ return String(Math.floor(100000+Math.random()*900000)); }
-function publicState(game){
+if (level >= 3) {
+cards.push(mk('randomPoints'));
+}
+while (cards.length < 45) cards.push(mk('points', [1,3,5,-2][cards.length % 4]));
+if (cards.length > 45) cards = cards.slice(0, 45);
+// shuffle
+for (let i = cards.length - 1; i > 0; i--) {
+const j = Math.floor(Math.random() * (i + 1));
+[cards[i], cards[j]] = [cards[j], cards[i]];
+}
+return cards;
+}
+function makePlayers(count) {
+const names = ['اللاعب 1','اللاعب 2','اللاعب 3','اللاعب 4'];
+return Array.from({length: count}, (_, i) => ({
+id: i, name: names[i] || ('اللاعب ' + (i+1)),
+score: 0, shield: 0, bombShield: 0, stealShield: 0, resetShield: 0,
+reflect: 0, shieldReverse: 0, shieldSkip: 0, goldenShield: 0,
+cancelShuffle: 0, cancelReplay: 0, freeze: 0,
+connected: true, isBot: false
+}));
+}
+// ---------- Rooms ----------
+const rooms = new Map(); // code -> room
+function makeRoom(code, maxPlayers) {
 return {
-type:'game_state',
-players: game.players.map(p=>({id:p.id,name:p.name,score:p.score,shield:p.shield,bombShield:p.bombShield,stealShield:p.stealShield,resetShield:p.resetShield,reflect:p.reflect,shieldReverse:p.shieldReverse,shieldSkip:p.shieldSkip,goldenShield:p.goldenShield,cancelShuffle:p.cancelShuffle,cancelReplay:p.cancelReplay,freeze:p.freeze})),
-cards: game.cards.map(c=>({type:c.type,value:c.value,amount:c.amount,opened:c.opened})),
-level: game.level, direction: game.direction,
-currentPlayer: game.current+1, currentPlayerBase:1,
-seconds: 15, roomCode: game.code
+code, maxPlayers, players: [], // {ws, slot, name, connected}
+game: null, // {players, cards, level, direction, current, timer, started}
+timerInterval: null,
 };
 }
-function startGame(game){
-game.cards = deckFor(1);
-game.level=1; game.direction=1; game.current=0;
-game.players.forEach((p,i)=>{
-p.id=i+1;
-send(p.ws,{type:'game_start', myPlayerId:i+1, myPlayer:i+1, myIndex:i, players: game.players.map(x=>({id:x.id,name:x.name,score:0,shield:0,bombShield:0,stealShield:0,resetShield:0,reflect:0,shieldReverse:0,shieldSkip:0,goldenShield:0,cancelShuffle:0,cancelReplay:0,freeze:0})), cards: game.cards, level:1, direction:1, currentPlayer:1, currentPlayerBase:1, seconds:15, roomCode: game.code});
+function publicGameState(room) {
+if (!room.game) return null;
+return {
+players: room.game.players,
+cards: room.game.cards,
+level: room.game.level,
+direction: room.game.direction,
+current: room.game.current,
+timer: room.game.timer,
+started: true,
+};
+}
+function broadcast(room, obj) {
+const msg = JSON.stringify(obj);
+room.players.forEach(p => {
+if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+try { p.ws.send(msg); } catch {}
+}
 });
-startTimer(game);
 }
-function startTimer(game){
-clearInterval(game.timer);
-game.seconds=15;
-game.timer=setInterval(()=>{
-if(!game.started) return;
-game.seconds--;
-broadcast(game,{type:'timer',seconds:game.seconds});
-if(game.seconds<=0){
-broadcast(game,{type:'turn_skipped'});
-advance(game,1);
-game.seconds=15;
-broadcast(game, publicState(game));
+function broadcastState(room) {
+if (!room.game) return;
+broadcast(room, { type: 'game_state', ...publicGameState(room) });
 }
-},1000);
+function stopTimer(room) {
+if (room.timerInterval) { clearInterval(room.timerInterval); room.timerInterval = null; }
 }
-function advance(game, steps){
-let left=steps||1, guard=0;
-while(left>0 && guard<30){
-guard++;
-game.current = game.direction===1 ? (game.current+1)%game.players.length : (game.current-1+game.players.length)%game.players.length;
-let p=game.players[game.current];
-if(p && p.freeze>0){ p.freeze--; left++; }
-left--;
+function startTimer(room) {
+stopTimer(room);
+if (!room.game) return;
+room.game.timer = 30;
+broadcast(room, { type: 'timer', timer: 30, current: room.game.current });
+room.timerInterval = setInterval(() => {
+if (!room.game) { stopTimer(room); return; }
+room.game.timer -= 1;
+if (room.game.timer <= 0) {
+// time out -> skip turn (respect freeze in nextTurn)
+room.game.timer = 30;
+broadcast(room, { type: 'timeout', current: room.game.current, message: '⏱️ انتهى الوقت - تم تخطي الدور' });
+advanceTurn(room, 1, 'timeout');
+} else {
+broadcast(room, { type: 'timer', timer: room.game.timer, current: room.game.current });
 }
+}, 1000);
 }
-function checkEnd(game){
-if(!game.cards.every(c=>c.opened)) return false;
-clearInterval(game.timer);
-let best=Math.max(...game.players.map(p=>p.score));
-let win=game.players.filter(p=>p.score===best);
-broadcast(game,{type:'game_over', winner: win.length===1? win[0].name : null, players: game.players.map(p=>({id:p.id,name:p.name,score:p.score,shield:p.shield,bombShield:p.bombShield,stealShield:p.stealShield,resetShield:p.resetShield,reflect:p.reflect,shieldReverse:p.shieldReverse,shieldSkip:p.shieldSkip,goldenShield:p.goldenShield,cancelShuffle:p.cancelShuffle,cancelReplay:p.cancelReplay,freeze:p.freeze}))});
-game.started=false;
-return true;
+// advanceTurn: steps=1 normal, steps=2 for skip card effect etc.
+// handles freeze: if next player frozen, decrease freeze and skip again
+function advanceTurn(room, steps = 1, reason = '') {
+if (!room.game) return;
+const g = room.game;
+let cur = g.current;
+let toAdvance = steps;
+// we loop to handle freeze
+for (let i = 0; i < 10; i++) {
+// move `toAdvance` steps in direction
+for (let s = 0; s < toAdvance; s++) {
+cur = (cur + g.direction + g.players.length) % g.players.length;
 }
-// Apply effect - server is source of truth. Returns true if turn should advance.
-function applyEffect(game, card, pickerIdx, targetIdx, firstIdx, extra){
-let players=game.players;
-let me=players[pickerIdx];
-let t = targetIdx!=null ? players[targetIdx] : null;
-let amt = card.amount!=null?card.amount:3;
-// replay / doubleChoice are handled by caller - they call applyEffect again with chosen card
-if(card.type==='points'){
-let v=card.value||0;
-if(v<0 && me.shield>0){ me.shield--; }
-else me.score+=v;
+toAdvance = 1; // after first move, further freeze-skips are 1 step
+const p = g.players[cur];
+if (p && p.freeze > 0) {
+p.freeze -= 1;
+broadcast(room, { type: 'frozen_skip', player: cur, name: p.name, message: `🧊 تم تخطي دور ${p.name} بسبب التجميد` });
+// continue loop to move to next
+continue;
 }
-else if(card.type==='shield'){ me.shield++; }
-else if(card.type==='stealShield'||card.type==='shieldSteal'){ me.stealShield++; }
-else if(card.type==='resetShield'){ me.resetShield++; }
-else if(card.type==='shieldReverse'){ me.shieldReverse++; }
-else if(card.type==='shieldSkip'){ me.shieldSkip++; }
-else if(card.type==='goldenShield'){ me.goldenShield++; }
-else if(card.type==='bombShield'){ me.bombShield++; }
-else if(card.type==='reflect'){ me.reflect++; }
-else if(card.type==='cancelShuffle'){ me.cancelShuffle++; }
-else if(card.type==='cancelReplay'){ me.cancelReplay++; }
-else if(card.type==='reverse'){
-let nx=players[(pickerIdx+game.direction+players.length)%players.length];
-if(nx && nx.shieldReverse>0){ nx.shieldReverse--; }
-else game.direction=-game.direction;
+// skip disconnected players - they don't block the game
+if (p && !p.connected && g.players.filter(x => x.connected).length > 1) {
+// skip disconnected, continue
+continue;
 }
-else if(card.type==='skip'){
-let n2=players[(pickerIdx+game.direction+players.length)%players.length];
-if(n2 && n2.shieldSkip>0){ n2.shieldSkip--; advance(game,1); return; }
-else { advance(game,2); return; }
+break;
 }
-else if(card.type==='doubleSelf'){ me.score*=2; }
-else if(card.type==='reset'){ players.forEach(p=>{ if(p===me) return; if(p.goldenShield>0) p.goldenShield--; else if(p.resetShield>0) p.resetShield--; else p.score=0; }); }
-else if(card.type==='stealAll'){ let g=0; players.forEach(p=>{ if(p===me) return; if(p.goldenShield>0) p.goldenShield--; else if(p.stealShield>0) p.stealShield--; else { g+=Math.max(0,p.score); p.score-=Math.max(0,p.score); } }); me.score+=g; }
-else if(card.type==='reverseBalances'){ players.forEach(p=>{ if(p!==me) p.score=-p.score; }); }
-else if(card.type==='bombAll'){ players.forEach(p=>{ if(p===me) return; if(p.goldenShield>0) p.goldenShield--; else if(p.bombShield>0) p.bombShield--; else p.score-=5; }); }
-else if(card.type==='randomPoints'){ let vals=[-10,-5,-2,1,3,5,7,10]; let v=vals[Math.floor(Math.random()*vals.length)]; me.score+=v; }
-else if(card.type==='randomBalances'){ let sc=players.map(p=>p.score); for(let i=sc.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1)); [sc[i],sc[j]]=[sc[j],sc[i]];} players.forEach((p,i)=>p.score=sc[i]); }
-else if(card.type==='shuffle'){
-// check cancelShuffle of others
-let canceller = players.find(p=>p!==me && p.cancelShuffle>0);
-if(canceller){ canceller.cancelShuffle--; }
-else {
-let closedIdx=[]; game.cards.forEach((cc,i)=>{ if(!cc.opened) closedIdx.push(i); });
-let vals=closedIdx.map(i=>game.cards[i]);
-for(let i=vals.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1)); [vals[i],vals[j]]=[vals[j],vals[i]];}
-closedIdx.forEach((idx,k)=>game.cards[idx]=vals[k]);
-// keep opened state: all closed cards stay closed, opened stay opened
-broadcast(game,{type:'cards_shuffled', cards: game.cards});
+g.current = cur;
+g.timer = 30;
+broadcastState(room);
+broadcast(room, { type: 'turn', current: cur });
 }
+function startGame(room) {
+const count = room.players.length;
+const players = makePlayers(count);
+// keep names from room
+room.players.forEach((rp, i) => { if (rp.name) players[i].name = rp.name; });
+room.game = {
+players,
+cards: makeDeck(1),
+level: 1,
+direction: 1,
+current: 0,
+timer: 30,
+started: true,
+};
+// tell each ws its slot (myIndex)
+room.players.forEach((rp, i) => {
+if (rp.ws && rp.ws.readyState === WebSocket.OPEN) {
+rp.ws.send(JSON.stringify({ type: 'game_start', myIndex: i, ...publicGameState(room) }));
 }
-else if(card.type==='nextLevel'){
-if(game.level>=3) return;
-game.level++;
-game.cards=deckFor(game.level);
-players.forEach(p=>{ p.shield=0;p.bombShield=0;p.stealShield=0;p.resetShield=0;p.reflect=0;p.shieldReverse=0;p.shieldSkip=0;p.goldenShield=0;p.cancelShuffle=0;p.cancelReplay=0;p.freeze=0; });
-broadcast(game,{type:'level_changed', level: game.level, cards: game.cards});
-// don't advance extra - normal advance below will happen, but reset current to 0 for new level? keep current
-advance(game,1); return;
+});
+startTimer(room);
 }
-else if(card.type==='steal' && t){
-if(t.goldenShield>0) t.goldenShield--;
-else if(t.stealShield>0) t.stealShield--;
-else if(t.reflect>0){ t.reflect--; let take=Math.min(amt,Math.max(0,me.score)); me.score-=take; t.score+=take; }
-else { let take=Math.min(amt,Math.max(0,t.score)); t.score-=take; me.score+=take; }
-}
-else if(card.type==='bomb' && t){
-if(t.goldenShield>0) t.goldenShield--;
-else if(t.bombShield>0) t.bombShield--;
-else t.score-=amt;
-}
-else if(card.type==='doubleTarget' && t){
-if(t.goldenShield>0) t.goldenShield--; else t.score*=2;
-}
-else if(card.type==='resetPlayer' && t){
-if(t.goldenShield>0) t.goldenShield--;
-else if(t.resetShield>0) t.resetShield--;
-else t.score=0;
-}
-else if(card.type==='exchange' && t){
-if(t.goldenShield>0) t.goldenShield--;
-else { let tmp=me.score; me.score=t.score; t.score=tmp; }
-}
-else if(card.type==='exchangePlayers'){
-if(firstIdx!=null && t){
-let a=players[firstIdx];
-if(a && a!==t){ let tmp=a.score; a.score=t.score; t.score=tmp; }
-} else if(t){
-let tmp=me.score; me.score=t.score; t.score=tmp;
+function checkAllOpened(room) {
+if (!room.game) return;
+if (room.game.cards.every(c => c.opened)) {
+broadcast(room, { type: 'game_over', players: room.game.players });
+stopTimer(room);
 }
 }
-else if(card.type==='freeze' && t){
-// FIX: freeze = 1 (was 2)
-t.freeze=1;
+// ---------- HTTP (serve game if index.html exists) ----------
+const server = http.createServer((req, res) => {
+const url = req.url.split('?')[0];
+if (url === '/' || url === '/index.html') {
+const idx = path.join(__dirname, 'index.html');
+if (fs.existsSync(idx)) {
+res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+return res.end(fs.readFileSync(idx));
 }
-advance(game,1);
+res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+return res.end('Battle Cards WS V6 OK - game file not found, upload index.html');
 }
-function handlePick(game, ws, msg){
-let idx = Number(msg.cardIndex);
-if(!Number.isFinite(idx) || !game.cards[idx] || game.cards[idx].opened){
-send(ws,{type:'error', message:'بطاقة غير صالحة'});
+if (url === '/health' || url === '/ping') {
+res.writeHead(200, { 'Content-Type': 'application/json' });
+return res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
+}
+res.writeHead(404, { 'Content-Type': 'text/plain' });
+res.end('Not found');
+});
+const wss = new WebSocket.Server({ server });
+wss.on('connection', (ws) => {
+let myRoom = null;
+let mySlot = -1;
+let myName = '';
+ws.on('message', (raw) => {
+let data;
+try { data = JSON.parse(raw.toString()); } catch { return; }
+const type = data.type;
+// ---- create room ----
+if (type === 'create_room' || type === 'create') {
+const code = String(Math.floor(100000 + Math.random() * 900000));
+const maxPlayers = data.maxPlayers || data.playerCount || 2;
+const room = makeRoom(code, maxPlayers);
+rooms.set(code, room);
+myRoom = room; myName = data.name || 'اللاعب 1';
+mySlot = 0;
+room.players.push({ ws, slot: 0, name: myName, connected: true });
+ws.send(JSON.stringify({ type: 'room_created', code, myIndex: 0, maxPlayers }));
 return;
 }
-let pickerIdx = game.players.findIndex(p=>p.ws===ws);
-if(pickerIdx!==game.current){
-send(ws,{type:'error', message:'ماشي دورك'});
-return;
-}
-let card = game.cards[idx];
-// Cards that need target: if no target provided, ask client for target
-let needTarget = ['steal','bomb','doubleTarget','resetPlayer','exchange','exchangePlayers','freeze'];
-if(needTarget.includes(card.type) && msg.target==null){
-send(ws,{type:'need_target', cardIndex:idx, cardType:card.type});
-return;
-}
-// doubleChoice: client sends choiceIndex = which of the two revealed cards to activate
-// In this server, doubleChoice flow: first pick of doubleChoice card itself -> reveal it, then client picks 2 closed cards via doubleChoicePick?
-// Simplified compatible flow: if msg.choiceIndex != null, activate that card. If msg.doubleChoicePick, handle.
-// If card is doubleChoice and no choiceIndex, we reveal it and wait for choice
-if(card.type==='doubleChoice' && msg.choiceIndex==null){
-// reveal doubleChoice card, tell client to pick 2
-card.opened=true;
-broadcast(game,{type:'card_picked', cardIndex:idx, card:card, currentPlayer: game.current+1, currentPlayerBase:1});
-send(ws,{type:'need_target', cardIndex:idx, cardType:'doubleChoice'});
-// store pending
-game.pendingDoubleChoice = {picker: pickerIdx, cardIndex: idx};
-return;
-}
-if(card.type==='doubleChoice' && msg.choiceIndex!=null){
-// activate chosen card
-let chosenIdx = Number(msg.choiceIndex);
-let chosen = game.cards[chosenIdx];
-if(chosen && !chosen.opened) chosen.opened=true;
-broadcast(game,{type:'card_picked', cardIndex:chosenIdx, card:chosen, currentPlayer: game.current+1, currentPlayerBase:1});
-if(chosen) applyEffect(game, chosen, pickerIdx, null, null);
-game.pendingDoubleChoice=null;
-if(checkEnd(game)) return;
-game.seconds=15;
-broadcast(game, publicState(game));
-return;
-}
-if(card.type==='replay' && msg.replayIndex==null){
-card.opened=true;
-broadcast(game,{type:'card_picked', cardIndex:idx, card:card, currentPlayer: game.current+1, currentPlayerBase:1});
-send(ws,{type:'need_target', cardIndex:idx, cardType:'replay'});
-game.pendingReplay = {picker: pickerIdx, cardIndex: idx};
-return;
-}
-if(card.type==='replay' && msg.replayIndex!=null){
-let replayIdx = Number(msg.replayIndex);
-let replayCard = game.cards[replayIdx];
-if(replayCard && replayCard.opened){
-broadcast(game,{type:'card_picked', cardIndex:replayIdx, card:replayCard, currentPlayer: game.current+1, currentPlayerBase:1});
-applyEffect(game, replayCard, pickerIdx, null, null);
-}
-game.pendingReplay=null;
-if(checkEnd(game)) return;
-game.seconds=15;
-broadcast(game, publicState(game));
-return;
-}
-// Normal pick
-card.opened=true;
-// resolve target indices: client sends 1-based (targetBase=1)
-let targetIdx=null, firstIdx=null;
-if(msg.target!=null){
-let tb = msg.targetBase===1 ? 1 : (msg.targetBase===0 ? 0 : 1);
-targetIdx = Number(msg.target) - tb;
-}
-if(msg.first!=null){
-let fb = msg.firstBase===1 ? 1 : (msg.firstBase===0 ? 0 : 1);
-firstIdx = Number(msg.first) - fb;
-}
-broadcast(game,{type:'card_picked', cardIndex:idx, card:card, currentPlayer: game.current+1, currentPlayerBase:1});
-applyEffect(game, card, pickerIdx, targetIdx, firstIdx, msg);
-if(checkEnd(game)) return;
-game.seconds=15;
-broadcast(game, publicState(game));
-}
-function tryMatch(){
-// group waiting by playerCount
-for(let i=0;i<waiting.length;i++){
-let w=waiting[i];
-let group = waiting.filter(x=>x.playerCount===w.playerCount);
-if(group.length>=w.playerCount){
-let chosen = group.slice(0,w.playerCount);
-waiting = waiting.filter(x=>!chosen.includes(x));
-let code=roomCodeGen();
-let game={code, players: chosen.map(c=>({ws:c.ws, name:c.name})), cards:[], level:1, direction:1, current:0, started:true, seconds:15};
-// init player objects
-game.players = freshPlayers(chosen.map(c=>c.name));
-game.players.forEach((p,idx)=>{ p.ws=chosen[idx].ws; });
-rooms.set(code,game);
-chosen.forEach((c,idx)=>{ wsToGame.set(c.ws,{code, idx}); });
-startGame(game);
-}
-}
-}
-wss.on('connection',(ws)=>{
-ws.on('message',(raw)=>{
-let msg; try{ msg=JSON.parse(String(raw)); }catch(e){ return; }
-let type=String(msg.type||'');
-if(type==='find_match'){
-let name=String(msg.name||'اللاعب 1').slice(0,20);
-let pc=Number(msg.playerCount)||2;
-waiting.push({ws,name,playerCount:pc});
-send(ws,{type:'waiting', players: waiting.filter(w=>w.playerCount===pc).map(w=>w.name), current: waiting.filter(w=>w.playerCount===pc).length, total: pc});
-tryMatch();
-// broadcast waiting update to group
-waiting.filter(w=>w.playerCount===pc).forEach(w=> send(w.ws,{type:'waiting', players: waiting.filter(x=>x.playerCount===pc).map(x=>x.name), current: waiting.filter(x=>x.playerCount===pc).length, total: pc}));
-return;
-}
-if(type==='create_room'){
-let name=String(msg.name||'اللاعب 1').slice(0,20);
-let pc=Number(msg.playerCount)||2;
-let code=roomCodeGen();
-let game={code, players:[{ws, name}], cards:[], level:1, direction:1, current:0, started:false, seconds:15, total:pc};
-game.players = freshPlayers([name]);
-game.players[0].ws=ws;
-rooms.set(code,game);
-wsToGame.set(ws,{code, idx:0});
-send(ws,{type:'room_created', roomCode:code});
-send(ws,{type:'room_players', players:[name], current:1, total:pc, roomCode:code});
-return;
-}
-if(type==='join_room'){
-let code=String(msg.roomCode||'');
-let game=rooms.get(code);
-if(!game){ send(ws,{type:'room_error', message:'الغرفة غير موجودة'}); return; }
-if(game.started){ send(ws,{type:'room_error', message:'الجولة بدأت'}); return; }
-let name=String(msg.name||'اللاعب 1').slice(0,20);
-game.players.push({ws, name});
-// rebuild freshPlayers keeping names
-let names=game.players.map(p=>p.name);
-let oldWs=game.players.map(p=>p.ws);
-game.players=freshPlayers(names);
-game.players.forEach((p,i)=>p.ws=oldWs[i]);
-game.players.forEach((p,i)=> wsToGame.set(p.ws,{code, idx:i}));
-let total=game.total||2;
-broadcast(game,{type:'room_players', players: names, current: names.length, total, roomCode:code});
-if(names.length>=total){
-game.started=true;
-startGame(game);
+// ---- join room ----
+if (type === 'join_room' || type === 'join') {
+const code = String(data.code || '').trim();
+const room = rooms.get(code);
+if (!room) { ws.send(JSON.stringify({ type: 'error', message: 'الغرفة غير موجودة' })); return; }
+if (room.game && room.game.started) { ws.send(JSON.stringify({ type: 'error', message: 'الجولة بدأت already' })); return; }
+if (room.players.length >= room.maxPlayers) { ws.send(JSON.stringify({ type: 'error', message: 'الغرفة ممتلئة' })); return; }
+myRoom = room; myName = data.name || ('اللاعب ' + (room.players.length + 1));
+mySlot = room.players.length;
+room.players.push({ ws, slot: mySlot, name: myName, connected: true });
+ws.send(JSON.stringify({ type: 'room_joined', code, myIndex: mySlot, maxPlayers: room.maxPlayers, players: room.players.map(p => p.name) }));
+broadcast(room, { type: 'player_joined', name: myName, count: room.players.length, maxPlayers: room.maxPlayers, players: room.players.map(p => p.name) });
+// auto-start when full
+if (room.players.length === room.maxPlayers) {
+setTimeout(() => startGame(room), 500);
 }
 return;
 }
-if(type==='cancel_search'){
-waiting=waiting.filter(w=>w.ws!==ws);
-send(ws,{type:'search_cancelled'});
+// ---- start manually (host) ----
+if (type === 'start_game') {
+if (myRoom && myRoom.players.length >= 2 && !myRoom.game) startGame(myRoom);
 return;
 }
-if(type==='leave_game'){
-let info=wsToGame.get(ws);
-if(info){
-let game=rooms.get(info.code);
-if(game){
-clearInterval(game.timer);
-broadcast(game,{type:'player_disconnected', player: game.players[info.idx]?.name});
-rooms.delete(info.code);
-}
-wsToGame.delete(ws);
-}
-waiting=waiting.filter(w=>w.ws!==ws);
-send(ws,{type:'left_game'});
+if (!myRoom) return;
+const room = myRoom;
+const g = room.game;
+// ---- get state ----
+if (type === 'get_state') {
+if (g) ws.send(JSON.stringify({ type: 'game_state', myIndex: mySlot, ...publicGameState(room) }));
 return;
 }
-if(type==='chat'){
-let info=wsToGame.get(ws);
-if(info){
-let game=rooms.get(info.code);
-if(game) broadcast(game,{type:'chat', name:String(msg.name||'لاعب'), message:String(msg.message||'')});
-}
+// ---- chat ----
+if (type === 'chat' || type === 'message') {
+broadcast(room, { type: 'chat', name: myName, slot: mySlot, text: String(data.text || '').slice(0, 200) });
 return;
 }
-if(type==='get_state' || type==='sync' || type==='request_state'){
-let info=wsToGame.get(ws);
-if(info){
-let game=rooms.get(info.code);
-if(game) send(ws, publicState(game));
-}
+if (!g) return;
+// ---- pick card ----
+if (type === 'pick_card' || type === 'card_picked' || type === 'pick') {
+const idx = data.index ?? data.cardIndex ?? data.card_index;
+if (typeof idx !== 'number' || idx < 0 || idx >= g.cards.length) return;
+// TURN ENFORCEMENT: only current player can pick, unless it's doubleChoice/replay handled client-side but still current turn
+if (mySlot !== g.current) {
+ws.send(JSON.stringify({ type: 'error', message: 'ليس دورك' }));
 return;
 }
-if(type==='pick_card'){
-let info=wsToGame.get(ws);
-if(!info){ send(ws,{type:'error', message:'ماكش في غرفة'}); return; }
-let game=rooms.get(info.code);
-if(!game) return;
-handlePick(game, ws, msg);
+const card = g.cards[idx];
+if (card.opened) {
+ws.send(JSON.stringify({ type: 'error', message: 'البطاقة مكشوفة already' }));
+return;
+}
+// 1) Mark opened - STAYS revealed for everyone because game_state always sends full cards array
+card.opened = true;
+broadcast(room, { type: 'card_revealed', index: idx, card, by: mySlot, current: g.current });
+broadcast(room, { type: 'card_picked', index: idx, card, by: mySlot });
+// reset timer for next turn? timer keeps running, but we broadcast state
+// Note: client applies effect locally, then sends effect_done / apply_effect
+// For simple effects (points) server applies directly if client sends apply_effect
+// If client doesn't send apply, we still advance after short delay? No - wait for client apply_effect or target.
+// To keep game moving even if client forgets, we set a 5s fallback? We do NOT auto-advance here.
+// The client must send 'effect_done' or 'target' or 'next_turn'
+return;
+}
+// ---- apply effect (score / shields / etc.) ----
+// Client sends the resulting players array or a delta, server validates and broadcasts as truth
+if (type === 'apply_effect' || type === 'effect' || type === 'update_players') {
+if (Array.isArray(data.players)) {
+// keep connected flags, apply scores/shields/freeze from client (trusted for now, same logic as local)
+g.players = data.players.map((p, i) => ({ ...g.players[i], ...p, connected: g.players[i]?.connected ?? true }));
+}
+if (typeof data.direction === 'number') g.direction = data.direction;
+if (typeof data.level === 'number' && data.level !== g.level) {
+g.level = data.level;
+g.cards = makeDeck(data.level);
+g.players.forEach(p => { p.shield=0; p.bombShield=0; p.stealShield=0; p.resetShield=0; p.reflect=0; p.shieldReverse=0; p.shieldSkip=0; p.goldenShield=0; p.cancelShuffle=0; p.cancelReplay=0; p.freeze=0; });
+broadcast(room, { type: 'level_changed', level: g.level, ...publicGameState(room) });
+startTimer(room);
+return;
+}
+broadcastState(room);
+return;
+}
+// ---- target selected (steal/bomb/freeze/...) ----
+if (type === 'target' || type === 'target_selected' || type === 'choose_target') {
+broadcast(room, { type: 'target_selected', by: mySlot, target: data.target ?? data.index, cardType: data.cardType || data.card_type });
+return;
+}
+// ---- shuffle / next level request ----
+if (type === 'shuffle' || type === 'cards_shuffled') {
+g.cards = makeDeck(g.level);
+broadcast(room, { type: 'cards_shuffled', ...publicGameState(room) });
+return;
+}
+if (type === 'next_level' || type === 'level_up') {
+g.level = Math.min(3, g.level + 1);
+g.cards = makeDeck(g.level);
+g.players.forEach(p => { p.shield=0; p.bombShield=0; p.stealShield=0; p.resetShield=0; p.reflect=0; p.shieldReverse=0; p.shieldSkip=0; p.goldenShield=0; p.cancelShuffle=0; p.cancelReplay=0; p.freeze=0; });
+broadcast(room, { type: 'level_changed', level: g.level, ...publicGameState(room) });
+startTimer(room);
+return;
+}
+// ---- next turn (after effect applied) ----
+if (type === 'next_turn' || type === 'effect_done' || type === 'end_turn') {
+const steps = data.steps || data.skip || 1;
+// if client already updated players, apply them
+if (Array.isArray(data.players)) {
+g.players = data.players.map((p, i) => ({ ...g.players[i], ...p }));
+}
+if (typeof data.direction === 'number') g.direction = data.direction;
+advanceTurn(room, steps, 'effect_done');
+checkAllOpened(room);
+return;
+}
+// ---- skip turn explicitly ----
+if (type === 'skip_turn') {
+advanceTurn(room, 1, 'skip');
 return;
 }
 });
-ws.on('close',()=>{
-waiting=waiting.filter(w=>w.ws!==ws);
-let info=wsToGame.get(ws);
-if(info){
-let game=rooms.get(info.code);
-if(game && game.started){
-broadcast(game,{type:'player_disconnected', player: game.players[info.idx]?.name});
+ws.on('close', () => {
+if (!myRoom) return;
+const room = myRoom;
+const p = room.players.find(x => x.slot === mySlot);
+if (p) p.connected = false;
+if (room.game) {
+const gp = room.game.players[mySlot];
+if (gp) gp.connected = false;
+broadcast(room, { type: 'player_left', slot: mySlot, name: myName, message: `${myName} خرج - تكمل الجولة بالباقي` });
+// If it was his turn, pass turn so game doesn't freeze
+if (room.game.current === mySlot) {
+setTimeout(() => advanceTurn(room, 1, 'player_left'), 500);
+} else {
+broadcastState(room);
 }
-wsToGame.delete(ws);
+// If only 0 connected, stop timer and delete room after a while
+if (room.game.players.every(x => !x.connected)) {
+stopTimer(room);
+setTimeout(() => { if (room.game && room.game.players.every(x => !x.connected)) rooms.delete(room.code); }, 30000);
+}
+} else {
+// lobby: remove player
+room.players = room.players.filter(x => x.slot !== mySlot);
+broadcast(room, { type: 'player_left', slot: mySlot, name: myName });
+if (room.players.length === 0) rooms.delete(room.code);
 }
 });
+ws.on('error', () => {});
 });
-server.listen(PORT,()=>console.log('WS V7 listening on '+PORT));
+server.listen(PORT, () => {
+console.log(`Battle Cards WS V6 listening on ${PORT}`);
+});
