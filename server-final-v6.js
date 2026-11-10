@@ -1,129 +1,385 @@
-<!DOCTYPE html>
-<html data-dpl-id="dpl_31uK715fuB5j8ACtmQghWzA9pLo9" lang="en-US" dir="ltr" class="omuUYW_variable K58pLa_variable light antialiased" data-style="default" data-accent-color="blue">
-  <head>
-    <base href="https://www.meta.ai/share/a/">
-    <meta charSet="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2, viewport-fit=cover"/>
-    <link rel="stylesheet" href="/_next/static/immutable/chunks/1jbm2psn8210t.css" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" data-precedence="next"/>
-    <link rel="stylesheet" href="/_next/static/immutable/chunks/2_5n-yiahhwgo.css" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" data-precedence="next"/>
-    <link rel="stylesheet" href="/_next/static/immutable/chunks/1p4be3xlgsa6o.css" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" data-precedence="next"/>
-    <link rel="stylesheet" href="/_next/static/immutable/chunks/24xv6fzsaklmb.css" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" data-precedence="next"/>
-    <link rel="stylesheet" href="/_next/static/immutable/chunks/029h-n6b4cn84.css" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" data-precedence="next"/>
-    <link rel="stylesheet" href="/_next/static/immutable/chunks/3t6sdti575wzf.css" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" data-precedence="next"/>
-    <link rel="preload" as="script" fetchPriority="low" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" href="/_next/static/immutable/chunks/29ta71z-9yw85.js"/><script src="/_next/static/immutable/chunks/44jh16onv2k3y.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/1u-7g9msb7-qv.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/3cq9nfx4krlt_.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/15lg8do6tvazp.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/turbopack-2sqw3b0qqgmuj.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0xnhetiy-_sbh.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/1r5iz95izbyzi.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/1_9utoma8uzis.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/1g_ku8jwwr0np.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/13aow25gzvqba.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/3ypbvv2n56hql.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0wgs88-2i3tuy.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/3tata-uc3frzz.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2890objf28g1h.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0rye646a8njev.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/42zu8vu56pa6_.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/3fj0--drrvc_0.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/08zagszrl10-v.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/1v8j8_xpa_z20.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0voawrgo726_y.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/14m7o61-v1im7.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/3-occmv4fwo_g.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/19h7ayuai_sat.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2e3grsahju4lh.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/27itnyb6g-df4.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0larpwqvowxwd.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/31lz42og5q9qy.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/088iptwifwubc.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/3db3-2v2fsby0.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/22i1216dv6101.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/008yqdcroz7hp.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/383p0jopkv9x6.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0k8c__1xii5qs.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2pjq03m08dj7b.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2grzb8w6atjb2.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2cv8stnfgxfx4.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0s59_88mesfay.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/1amfmh6fihv65.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2s85hzrcin9gp.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2wk9kvdbys0jx.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/40loj0b950hpk.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0ka4haw2vhnzj.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/357piqdm2mjvl.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0d5x924_3w965.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2_lut5_pw-gwg.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/2g8_ny7ludcvh.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/09i3mful5ijg2.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/24zrtqdhziwb7.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0_s4cdsu1ix0e.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/3qbii6te7tlc_.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/0dl79ybbrwdjx.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/19n_txbtpwft5.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><script src="/_next/static/immutable/chunks/23xcww1uydkxj.js" async="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script><meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
-    <meta name="theme-color" content="#17171a" media="(prefers-color-scheme: dark)"/>
-    <title>Meta AI</title>
-    <meta name="description" content="Use Meta AI assistant to get things done, create AI-generated images for free, and get answers to any of your questions."/>
-    <meta name="apple-itunes-app" content="app-id=1558240027"/>
-    <meta name="format-detection" content="telephone=no"/>
-    <link rel="icon" href="/favicon.ico?v=3" sizes="16x16 32x32 48x48" data-default-icon="/favicon.ico?v=3" data-badged-icon="/favicon-badged.ico?v=3"/>
-    <link rel="apple-touch-icon" href="/images/pwa_icons/apple/180.png?v=1"/>
-    <meta name="next-size-adjust" content=""/>
-    <link rel="manifest" href="/manifest.json?v=2" crossorigin="use-credentials"/><script id="ecto-is-employee" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">window.__ECTO_IS_EMPLOYEE__=false;</script><script id="ecto-system-theme" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">(function(){try{var d=document.documentElement,c=d.classList,m=window.matchMedia("(prefers-color-scheme: dark)");if(m.matches&&!c.contains("dark")){c.remove("light");c.add("dark")}else if(!m.matches&&!c.contains("light")){c.remove("dark");c.add("light")}}catch(e){}})()</script><script id="ecto-app-install-banner" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">(function(){try{if(window.sessionStorage.getItem("ecto_app_install_banner_dismissed")==="1"||window.matchMedia("(display-mode: standalone)").matches){document.documentElement.setAttribute("data-app-install-banner","hidden")}}catch(e){}})()</script><script id="ecto-logged-out-signin-card" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">(function(){try{if(window.sessionStorage.getItem("ecto_logged_out_signin_card_dismissed")==="1"){document.documentElement.setAttribute("data-signin-card","hidden")}}catch(e){}})()</script><script src="/_next/static/immutable/chunks/0c0hxoamwjsbw.js" noModule="" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj"></script></head>
-    <body>
-      <div hidden="">
-        <!--$-->
-        <!--/$-->
-      </div>
-      <!--$-->
-      <!--html-->
-      <!--head-->
-      <!--body-->
-      <!--&-->
-      <!--&-->
-      <!--&-->
-      <!--&-->
-      <!--$-->
-      <div class="bg-bg-primary flex h-dvh flex-col">
-        <!--$?-->
-        <template id="B:0">
-        </template>
-        <div class="flex min-h-0 flex-1 items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="status" aria-label="Loading" data-visualcompletion="loading-state" class="animate-spin size-8 text-text-primary">
-            <path d="M12 2.75A9.25 9.25 0 0 1 21.25 12" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            </path>
-            <path d="M21.25 12A9.25 9.25 0 0 1 12 21.25" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6">
-            </path>
-            <path d="M12 21.25A9.25 9.25 0 0 1 2.75 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3">
-            </path>
-          </svg>
-        </div>
-        <!--/$-->
-      </div>
-      <!--/$-->
-      <!--$-->
-      <!--/$-->
-      <!--/&-->
-      <!--/&-->
-      <!--/&-->
-      <!--/&-->
-      <div data-ignore-initial-load="true">
-        <!--$-->
-        <!--/$-->
-        <!--$-->
-        <!--/$-->
-      </div>
-      <!--/$--><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">requestAnimationFrame(function(){$RT=performance.now()});</script><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" id="_R_">(globalThis["TURBOPACK"] || (globalThis["TURBOPACK"] = [])).push({"otherChunks":["static/immutable/chunks/29ta71z-9yw85.js","static/immutable/chunks/44jh16onv2k3y.js","static/immutable/chunks/1u-7g9msb7-qv.js","static/immutable/chunks/3cq9nfx4krlt_.js","static/immutable/chunks/15lg8do6tvazp.js"],"runtimeModuleIds":[842129]});</script><script src="/_next/static/immutable/chunks/29ta71z-9yw85.js" nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj" async=""></script><div hidden id="S:0">
-      <template id="P:1">
-      </template>
-      <!--$?-->
-      <template id="B:2">
-      </template>
-      <!--/$-->
-    </div><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">(self.__next_f=self.__next_f||[]).push([0])</script><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">self.__next_f.push([1,"1:\"/_next/static/immutable/chunks/0xnhetiy-_sbh.js\"\n2:\"/_next/static/immutable/chunks/1r5iz95izbyzi.js\"\n3:\"/_next/static/immutable/chunks/1_9utoma8uzis.js\"\n4:\"/_next/static/immutable/chunks/1g_ku8jwwr0np.js\"\n5:\"/_next/static/immutable/chunks/13aow25gzvqba.js\"\n6:\"/_next/static/immutable/chunks/3ypbvv2n56hql.js\"\n7:\"/_next/static/immutable/chunks/0wgs88-2i3tuy.js\"\n8:\"/_next/static/immutable/chunks/3tata-uc3frzz.js\"\n9:\"/_next/static/immutable/chunks/2890objf28g1h.js\"\na:\"/_next/static/immutable/chunks/0rye646a8njev.js\"\nb:\"/_next/static/immutable/chunks/42zu8vu56pa6_.js\"\nc:\"/_next/static/immutable/chunks/3fj0--drrvc_0.js\"\nd:\"/_next/static/immutable/chunks/08zagszrl10-v.js\"\ne:\"/_next/static/immutable/chunks/1v8j8_xpa_z20.js\"\nf:\"/_next/static/immutable/chunks/0voawrgo726_y.js\"\n10:\"/_next/static/immutable/chunks/14m7o61-v1im7.js\"\n11:\"/_next/static/immutable/chunks/3-occmv4fwo_g.js\"\n12:\"/_next/static/immutable/chunks/19h7ayuai_sat.js\"\n13:\"/_next/static/immutable/chunks/2e3grsahju4lh.js\"\n14:\"/_next/static/immutable/chunks/27itnyb6g-df4.js\"\n15:\"/_next/static/immutable/chunks/0larpwqvowxwd.js\"\n16:\"/_next/static/immutable/chunks/31lz42og5q9qy.js\"\n17:\"/_next/static/immutable/chunks/088iptwifwubc.js\"\n18:\"/_next/static/immutable/chunks/3db3-2v2fsby0.js\"\n19:\"/_next/static/immutable/chunks/22i1216dv6101.js\"\n1a:\"/_next/static/immutable/chunks/008yqdcroz7hp.js\"\n1b:\"/_next/static/immutable/chunks/383p0jopkv9x6.js\"\n1c:\"HTTPAccessFallbackBoundary\"\n1d:I[56977,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$1c\"]\n3e:\"/_next/static/immutable/chunks/0k8c__1xii5qs.js\"\n3f:I[230180,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$3e\"],\"default\"]\n:HL[\"/_next/static/immutable/chunks/1jbm2psn8210t.css\",\"style\",{\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n:HL[\"/_next/static/immutable/chunks/2_5n-yiahhwgo.css\",\"style\",{\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n:HL[\"/_next/static/immutable/chunks/1p4be3xlgsa6o.css\",\"style\",{\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n:HL[\"/_next/static/immutable/chunks/24xv6fzsaklmb.css\",\"style\",{\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n:HL[\"/_next/static/immutable/chunks/029h-n6b4cn84.css\",\"style\",{\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n:HL[\"/_next/static/immutable/media/OptimisticAI_VF_Optimized-s.p.1qcbydubu9isy.woff2\",\"font\",{\"crossOrigin\":\"\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"type\":\"font/woff2\"}]\n:HL[\"/_next/static/immutable/media/OptimisticAI_W_TextRegularIt-s.p.2woqy10pf2_t7.woff2\",\"font\",{\"crossOrigin\":\"\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"type\":\"font/woff2\"}]\n:HL[\"/_next/static/immutable/chunks/3t6sdti575wzf.css\",\"style\",{\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n27:X\n2a:X\n2f:X\n32:X\n30:[[\"children\",{\"s\":\"__PAGE__\",\"h\":57504,\"d\":{\"r\":\"$L31\",\"p\":false,\"v\":\"$32\"}}]]\n2d:[[\"children\",{\"s\":{\"n\":\"id\",\"t\":\"d\",\"k\":\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\",\"s\":[]},\"h\":57440,\"d\":{\"r\":\"$L2e\",\"p\":false,\"v\":\"$2f\"},\"c\":\"$Q30\"}]]\n2b:[[\"children\",{\"s\":\"a\",\"h\":57440,\"d\":{\"r\":\"$L2c\",\"p\":false,\"v\":\"$2a\"},\"c\":\"$Q2d\"}]]\n34:X\n36:X\n3b:X\n39:[[\"children\",{\"s\":\"__PAGE__\",\"h\":49184,\"d\":{\"r\":\"$L3a\",\"p\":false,\"v\":\"$3b\"}}]]\n37:[[\"children\",{\"s\":{\"n\":\"catchAll\",\"t\":\"c\",\"k\":\"share/a/08880588-a4c6-451d-92a2-fc7fefbc4fe5\",\"s\":[\"access_denied\",\"account_status\",\"ai-detector\",\"ai-image-generator\",\"ai-verify\",\"ai-video-generator\",\"ai_character_preview\",\"api\",\"artifacts\",\"audio-notes\",\"aura_oidc\",\"create\",\"debug\",\"deck\",\"download\",\"ent-query\",\"help\",\"i18n\",\"icons\",\"identification\",\"manifest.json\",\"media\",\"notifications\",\"oauth_account_linking\",\"oauth_account_linking_mobile\",\"oidc\",\"parasect_contributions\",\"places\",\"print\",\"proactive_feed_tooling\",\"profile\",\"profile_edit\",\"prompt\",\"report_status\",\"scheduled\",\"server\",\"share\",\"sitemap\",\"teen_safety_settings\",\"topics\",\"unavailable\",\"vibes\"]},\"h\":49248,\"d\":{\"r\":\"$L38\",\"p\":false,\"v\":\"$2a\"},\"c\":\"$Q39\"}]]\n28:[[\"children\",{\"s\":\"share\",\"h\":57440,\"d\":{\"r\":\"$L29\",\"p\":false,\"v\":\"$2a\"},\"c\":\"$Q2b\"}],[\"devtools\",{\"s\":\"__DEFAULT__\",\"h\":49152,\"d\":{\"r\":\"$L33\",\"p\":false,\"v\":\"$34\"}}],[\"sidebar\",{\"s\":\"(__SLOT__)\",\"h\":49216,\"d\":{\"r\":\"$L35\",\"p\":false,\"v\":\"$36\"},\"c\":\"$Q37\"}]]\n3d:X\n44:X\n45:X\n0:{\"P\":null,\"c\":[\"\",\"share\",\"a\",\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\"],\"q\":\"\",\"i\":false,\"t\":{\"t\":{\"s\":\"\",\"h\":57424,\"d\":{\"r\":[\"$\",\"$L1d\",\"c\",{\"notFound\":[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/1jbm2psn8210t.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"link\",\"1\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/2_5n-yiahhwgo.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"link\",\"2\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/1p4be3xlgsa6o.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"link\",\"3\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/24xv6fzsaklmb.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/0xnhetiy-_sbh.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/1r5iz95izbyzi.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-2\",{\"src\":\"/_next/static/immutable/chunks/1_9utoma8uzis.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-3\",{\"src\":\"/_next/static/immutable/chunks/1g_ku8jwwr0np.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-4\",{\"src\":\"/_next/static/immutable/chunks/13aow25gzvqba.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-5\",{\"src\":\"/_next/static/immutable/chunks/3ypbvv2n56hql.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-6\",{\"src\":\"/_next/static/immutable/chunks/0wgs88-2i3tuy.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-7\",{\"src\":\"/_next/static/immutable/chunks/3tata-uc3frzz.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-8\",{\"src\":\"/_next/static/immutable/chunks/2890objf28g1h.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-9\",{\"src\":\"/_next/static/immutable/chunks/0rye646a8njev.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-10\",{\"src\":\"/_next/static/immutable/chunks/42zu8vu56pa6_.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-11\",{\"src\":\"/_next/static/immutable/chunks/3fj0--drrvc_0.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-12\",{\"src\":\"/_next/static/immutable/chunks/08zagszrl10-v.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-13\",{\"src\":\"/_next/static/immutable/chunks/1v8j8_xpa_z20.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-14\",{\"src\":\"/_next/static/immutable/chunks/0voawrgo726_y.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-15\",{\"src\":\"/_next/static/immutable/chunks/14m7o61-v1im7.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-16\",{\"src\":\"/_next/static/immutable/chunks/3-occmv4fwo_g.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-17\",{\"src\":\"/_next/static/immutable/chunks/19h7ayuai_sat.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-18\",{\"src\":\"/_next/static/immutable/chunks/2e3grsahju4lh.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-19\",{\"src\":\"/_next/static/immutable/chunks/27itnyb6g-df4.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],\"$L1e\",\"$L1f\",\"$L20\",\"$L21\",\"$L22\",\"$L23\",\"$L24\"],\"$L25\"],\"children\":[\"$0:t:t:d:r:props:notFound:0\",\"$L26\"]}],\"p\":false,\"v\":\"$27\"},\"c\":\"$Q28\"},\"h\":{\"r\":\"$L3c\",\"p\":false,\"v\":\"$3d\"}},\"m\":\"$undefined\",\"G\":[\"$3f\",[\"$L40\",\"$L41\",\"$L42\",\"$L43\"]],\"S\":true,\"r\":\"$44\",\"s\":\"$45\",\"a\":\"$@46\",\"l\":\"$@47\",\"p\":\"$undefined\",\"d\":\"$undefined\"}\n48:\"$Sreact.fragment\"\n49:I[562460,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"default\"]\n4a:I[247405,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"default\"]\n4c:\"$Sreact.suspense\"\n4e:I[235438,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"OutletBoundary\"]\n52:\"ViewportBoundary\"\n53:I[235438,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$52\"]\n55:\"MetadataBoundary\"\n56:I[235438,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$55\"]\n1e:[\"$\",\"script\",\"script-20\",{\"src\":\"/_next/static/immutable/chunks/0larpwqvowxwd.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n1f:[\"$\",\"script\",\"script-21\",{\"src\":\"/_next/static/immutable/chunks/31lz42og5q9qy.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n20:[\"$\",\"script\",\"script-22\",{\"src\":\"/_next/static/immutable/chunks/088iptwifwubc.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n21:[\"$\",\"script\",\"script-23\",{\"src\":\"/_next/static/immutable/chunks/3db3-2v2fsby0.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n22:[\"$\",\"script\",\"script-24\",{\"src\":\"/_next/static/immutable/chunks/22i1216dv6101.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n23:[\"$\",\"script\",\"script-25\",{\"src\":\"/_next/static/immutable/chunks/008yqdcroz7hp.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n24:[\"$\",\"script\",\"script-26\",{\"src\":\"/_next/static/immutable/chunks/383p0jopkv9x6.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n29:[\"$\",\"$48\",\"c\",{\"children\":[null,[\"$\",\"$L49\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L4a\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]]}]\n2c:[\"$\",\"$48\",\"c\",{\"children\":[null,[\"$\",\"$L49\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L4a\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]]}]\n2e:[\"$\",\"$48\",\"c\",{\"children\":[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/029h-n6b4cn84.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/2pjq03m08dj7b.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/2grzb8w6atjb2.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-2\",{\"src\":\"/_next/static/immutable/chunks/2cv8stnfgxfx4.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-3\",{\"src\":\"/_next/static/immutable/chunks/0s59_88mesfay.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-4\",{\"src\":\"/_next/static/immutable/chunks/1amfmh6fihv65.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-5\",{\"src\":\"/_next/static/immutable/chunks/2s85hzrcin9gp.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-6\",{\"src\":\"/_next/static/immutable/chunks/2wk9kvdbys0jx.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]],\"$L4b\"]}]\n31:[\"$\",\"$48\",\"c\",{\"children\":[[\"$\",\"$4c\",null,{\"fallback\":null,\"children\":\"$L4d\"}],[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/3t6sdti575wzf.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/0d5x924_3w965.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/2_lut5_pw-gwg.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-2\",{\"src\":\"/_next/static/immutable/chunks/2g8_ny7ludcvh.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-3\",{\"src\":\"/_next/static/immutable/chunks/09i3mful5ijg2.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-4\",{\"src\":\"/_next/static/immutable/chunks/24zrtqdhziwb7.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-5\",{\"src\":\"/_next/static/immutable/chunks/0_s4cdsu1ix0e.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-6\",{\"src\":\"/_next/static/immutable/chunks/3qbii6te7tlc_.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-7\",{\"src\":\"/_next/static/immutable/chunks/0dl79ybbrwdjx.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-8\",{\"src\":\"/_next/static/immutable/chunks/19n_txbtpwft5.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-9\",{\"src\":\"/_next/static/immutable/chunks/23xcww1uydkxj.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]],[\"$\",\"$L4e\",null,{\"children\":[\"$\",\"$4c\",null,{\"name\":\"Next.MetadataOutlet\",\"children\":\"$@4f\"}]}]]}]\n33:[\"$\",\"$48\",\"c\",{\"children\":[\"$L50\",[[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/0u6c9knk_lbmx.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]],null]}]\n35:[\"$\",\"$48\",\"c\",{\"children\":[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/029h-n6b4cn84.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/2pjq03m08dj7b.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/2grzb8w6atjb2.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-2\",{\"src\":\"/_next/static/immutable/chunks/2cv8stnfgxfx4.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-3\",{\"src\":\"/_next/static/immutable/chunks/0s59_88mesfay.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-4\",{\"src\":\"/_next/static/immutable/chunks/1amfmh6fihv65.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-5\",{\"src\":\"/_next/static/immutable/chunks/2s85hzrcin9gp.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}],[\"$\",\"script\",\"script-6\",{\"src\":\"/_next/static/immutable/chunks/2wk9kvdbys0jx.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]],\"$L51\"]}]\n38:[\"$\",\"$48\",\"c\",{\"children\":[null,[\"$\",\"$L49\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L4a\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]]}]\n3a:[\"$\",\"$48\",\"c\",{\"children\":[null,null,null]}]\n3c:[\"$\",\"$48\",\"h\",{\"children\":[null,[\"$\",\"$L53\",null,{\"children\":\"$L54\"}],[\"$\",\"$L56\",null,{\"children\":[[\"$\",\"div\",null,{\"hidden\":true,\"children\":[\"$\",\"$4c\",null,{\"name\":\"Next.Metadata\",\"children\":\"$L57\"}]}],null]}],[\"$\",\"meta\",null,{\"name\":\"next-size-adjust\",\"content\":\"\"}]]}]\n40:[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/1jbm2psn8210t.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n41:[\"$\",\"link\",\"1\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/2_5n-yiahhwgo.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n42:[\"$\",\"link\",\"2\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/1p4be3xlgsa6o.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n43:[\"$\",\"link\",\"3\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/24xv6fzsaklmb.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]\n2a:C\n45:300\n25:[\"$\",\"$4c\",null,{\"fallback\":null,\"children\":\"$L58\"}]\n26:[\"$\",\"$4c\",null,{\"fallback\":null,\"children\":\"$L59\"}]\n45:C\n3d:C\n44:C\n34:C\n3b:C\n32:C\n36:C\n2f:C\n27:C\n5a:\"/_next/static/immutable/chunks/2pjq03m08dj7b.js\"\n5b:\"/_next/static/immutable/chunks/2grzb8w6atjb2.js\"\n5c:\"/_next/static/immutable/chunks/2cv8stnfgxfx4.js\"\n5d:\"/_next/static/immutable/chunks/0s59_88mesfay.js\"\n5e:\"/_next/static/immutable/chunks/1amfmh6fihv65.js\"\n5f:\"/_next/static/immutable/chunks/2s85hzrcin9gp.js\"\n60:\"/_next/static/immutable/chunks/2wk9kvdbys0jx.js\"\n61:I[392839,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\"],\"default\"]\n62:I[871779,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\"],\"ThemeProvider\"]\n63:\"EctoRelayProvider\"\n64:I[34239,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\"],\"$63\"]\n66:\"AuthContextProvider\"\n67:I[526796,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$66\"]\n68:\"/_next/static/immutable/chunks/40loj0b950hpk.js\"\n69:\"FbtClientProvider\"\n6a:I[830214,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$68\"],\"$69\"]\n6b:\"NavigationRouteContextProvider\"\n6c:I[595497,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$6b\"]\n6d:I[895610,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"default\"]\n6e:\"EctoMinimalLayoutAnalyticsBootstrap\"\n6f:I[692498,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$6e\"]\n71:\"ReactInitialRenderProvider\"\n72:I[908817,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$71\"]\n73:\"EctoVercelTelemetry\"\n74:I[55416,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"$73\"]\n75:\"/_next/static/immutable/chunks/0ka4haw2vhnzj.js\"\n76:I[841179,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$75\"],\"default\"]\n78:I[641174,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\"],\"IconMark\"]\n51:[\"$\",\"$L49\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L4a\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]\n4b:[\"$\",\"$L61\",null,{\"windowDimensions\":{\"width\":\"$undefined\",\"height\":\"$undefined\"},\"cookieMonsterState\":{\"cookies\":{},\"pendingCookies\":[],\"consentAsserted\":false},\"children\":[\"$\",\"$L62\",null,{\"serverTheme\":\"light\",\"serverPreference\":\"system\",\"serverStyle\":\"default\",\"serverAccentColor\":\"blue\",\"serverConnectorsDismissed\":false,\"children\":[\"$\",\"$L64\",null,{\"viewerId\":null,\"children\":[\"$\",\"$L49\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L4a\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":[\"$L65\",[]],\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]}]}]}]\n50:null\n47:18059\n46:18014\n58:[\"$\",\"html\",null,{\"lang\":\"en-US\",\"dir\":\"ltr\",\"className\":\"omuUYW_variable K58pLa_variable light antialiased\",\"data-style\":\"default\",\"data-accent-color\":\"blue\",\"children\":[[\"$\",\"head\",null,{\"children\":[[\"$\",\"script\",null,{\"id\":\"ecto-is-employee\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"window.__ECTO_IS_EMPLOYEE__=false;\"}}],[\"$\",\"link\",null,{\"rel\":\"manifest\",\"href\":\"/manifest.json?v=2\",\"crossOrigin\":\"use-credentials\"}],[\"$\",\"script\",null,{\"id\":\"ecto-system-theme\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"(function(){try{var d=document.documentElement,c=d.classList,m=window.matchMedia(\\\"(prefers-color-scheme: dark)\\\");if(m.matches\u0026\u0026!c.contains(\\\"dark\\\")){c.remove(\\\"light\\\");c.add(\\\"dark\\\")}else if(!m.matches\u0026\u0026!c.contains(\\\"light\\\")){c.remove(\\\"dark\\\");c.add(\\\"light\\\")}}catch(e){}})()\"}}],[\"$\",\"script\",null,{\"id\":\"ecto-app-install-banner\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"(function(){try{if(window.sessionStorage.getItem(\\\"ecto_app_install_banner_dismissed\\\")===\\\"1\\\"||window.matchMedia(\\\"(display-mode: standalone)\\\").matches){document.documentElement.setAttribute(\\\"data-app-install-banner\\\",\\\"hidden\\\")}}catch(e){}})()\"}}],[\"$\",\"script\",null,{\"id\":\"ecto-logged-out-signin-card\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"(function(){try{if(window.sessionStorage.getItem(\\\"ecto_logged_out_signin_card_dismissed\\\")===\\\"1\\\"){document.documentElement.setAttribute(\\\"data-signin-card\\\",\\\"hidden\\\")}}catch(e){}})()\"}}],false]}],[\"$\",\"body\",null,{\"children\":[[\"$\",\"$L67\",null,{\"viewerId\":null,\"accessToken\":null,\"isAuthenticated\":false,\"isLoggedIn\":false,\"children\":[\"$\",\"$L6a\",null,{\"locale\":\"en_US\",\"translationsUrl\":null,\"children\":[\"$\",\"$L6c\",null,{\"children\":[\"$\",\"$L6d\",null,{\"children\":[[\"$\",\"$L6f\",null,{\"disabled\":false}],[[],[\"$L70\",\"$58:props:children:1:props:children:0:props:children:props:children:props:children:props:children:1:0\"]],[\"$\",\"$L72\",null,{}]]}]}]}]}],[\"$\",\"div\",null,{\"data-ignore-initial-load\":true,\"children\":[\"$\",\"$L74\",null,{}]}]]}]]}]\n59:[\"$\",\"html\",null,{\"lang\":\"en-US\",\"dir\":\"ltr\",\"className\":\"omuUYW_variable K58pLa_variable light antialiased\",\"data-style\":\"default\",\"data-accent-color\":\"blue\",\"children\":[[\"$\",\"head\",null,{\"children\":[[\"$\",\"script\",null,{\"id\":\"ecto-is-employee\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"window.__ECTO_IS_EMPLOYEE__=false;\"}}],[\"$\",\"link\",null,{\"rel\":\"manifest\",\"href\":\"/manifest.json?v=2\",\"crossOrigin\":\"use-credentials\"}],[\"$\",\"script\",null,{\"id\":\"ecto-system-theme\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"(function(){try{var d=document.documentElement,c=d.classList,m=window.matchMedia(\\\"(prefers-color-scheme: dark)\\\");if(m.matches\u0026\u0026!c.contains(\\\"dark\\\")){c.remove(\\\"light\\\");c.add(\\\"dark\\\")}else if(!m.matches\u0026\u0026!c.contains(\\\"light\\\")){c.remove(\\\"dark\\\");c.add(\\\"light\\\")}}catch(e){}})()\"}}],[\"$\",\"script\",null,{\"id\":\"ecto-app-install-banner\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"(function(){try{if(window.sessionStorage.getItem(\\\"ecto_app_install_banner_dismissed\\\")===\\\"1\\\"||window.matchMedia(\\\"(display-mode: standalone)\\\").matches){document.documentElement.setAttribute(\\\"data-app-install-banner\\\",\\\"hidden\\\")}}catch(e){}})()\"}}],[\"$\",\"script\",null,{\"id\":\"ecto-logged-out-signin-card\",\"suppressHydrationWarning\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\",\"dangerouslySetInnerHTML\":{\"__html\":\"(function(){try{if(window.sessionStorage.getItem(\\\"ecto_logged_out_signin_card_dismissed\\\")===\\\"1\\\"){document.documentElement.setAttribute(\\\"data-signin-card\\\",\\\"hidden\\\")}}catch(e){}})()\"}}],false]}],[\"$\",\"body\",null,{\"children\":[[\"$\",\"$L67\",null,{\"viewerId\":null,\"accessToken\":null,\"isAuthenticated\":false,\"isLoggedIn\":false,\"children\":[\"$\",\"$L6a\",null,{\"locale\":\"en_US\",\"translationsUrl\":null,\"children\":[\"$\",\"$L6c\",null,{\"children\":[\"$\",\"$L6d\",null,{\"children\":[[\"$\",\"$L6f\",null,{\"disabled\":false}],[\"$\",\"$L49\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$76\",\"errorStyles\":[],\"errorScripts\":[[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/0ka4haw2vhnzj.js\",\"async\":true,\"nonce\":\"NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj\"}]],\"template\":[\"$\",\"$L4a\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$58:props:children:1:props:children:0:props:children:props:children:props:children:props:children:1:1\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}],[\"$\",\"$L72\",null,{}]]}]}]}]}],[\"$\",\"div\",null,{\"data-ignore-initial-load\":true,\"children\":[\"$\",\"$L74\",null,{}]}]]}]]}]\n4d:[\"$\",\"div\",null,{\"className\":\"bg-bg-primary flex h-dvh flex-col\",\"children\":[\"$\",\"$4c\",null,{\"fallback\":[\"$\",\"div\",null,{\"className\":\"flex min-h-0 flex-1 items-center justify-center\",\"children\":[\"$\",\"svg\",null,{\"viewBox\":\"0 0 24 24\",\"fill\":\"none\",\"xmlns\":\"http://www.w3.org/2000/svg\",\"role\":\"status\",\"aria-label\":\"Loading\",\"aria-hidden\":\"$undefined\",\"data-testid\":\"$undefined\",\"data-visualcompletion\":\"loading-state\",\"className\":\"animate-spin size-8 text-text-primary\",\"children\":[[\"$\",\"path\",null,{\"d\":\"M12 2.75A9.25 9.25 0 0 1 21.25 12\",\"stroke\":\"currentColor\",\"strokeWidth\":2,\"strokeLinecap\":\"round\"}],[\"$\",\"path\",null,{\"d\":\"M21.25 12A9.25 9.25 0 0 1 12 21.25\",\"stroke\":\"currentColor\",\"strokeWidth\":2,\"strokeLinecap\":\"round\",\"opacity\":0.6}],[\"$\",\"path\",null,{\"d\":\"M12 21.25A9.25 9.25 0 0 1 2.75 12\",\"stroke\":\"currentColor\",\"strokeWidth\":2,\"strokeLinecap\":\"round\",\"opacity\":0.3}]]}]}],\"children\":\"$L77\"}]}]\n54:[[\"$\",\"meta\",\"0\",{\"charSet\":\"utf-8\"}],[\"$\",\"meta\",\"1\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1, maximum-scale=2, viewport-fit=cover\"}],[\"$\",\"meta\",\"2\",{\"name\":\"theme-color\",\"content\":\"#ffffff\",\"media\":\"(prefers-color-scheme: light)\"}],[\"$\",\"meta\",\"3\",{\"name\":\"theme-color\",\"content\":\"#17171a\",\"media\":\"(prefers-color-scheme: dark)\"}]]\n4f:null\n57:[[\"$\",\"title\",\"0\",{\"children\":\"Meta AI\"}],[\"$\",\"meta\",\"1\",{\"name\":\"description\",\"content\":\"Use Meta AI assistant to get things done, create AI-generated images for free, and get answers to any of your questions.\"}],[\"$\",\"meta\",\"2\",{\"name\":\"apple-itunes-app\",\"content\":\"app-id=1558240027\"}],[\"$\",\"meta\",\"3\",{\"name\":\"format-detection\",\"content\":\"telephone=no\"}],[\"$\",\"link\",\"4\",{\"rel\":\"icon\",\"href\":\"/favicon.ico?v=3\",\"sizes\":\"16x16 32x32 48x48\",\"data-default-icon\":\"/favicon.ico?v=3\",\"data-badged-icon\":\"/favicon-badged.ico?v=3\"}],[\"$\",\"link\",\"5\",{\"rel\":\"apple-touch-icon\",\"href\":\"/images/pwa_icons/apple/180.png?v=1\"}],[\"$\",\"$L78\",\"6\",{}]]\n79:\"/_next/static/immutable/chunks/357piqdm2mjvl.js\"\n7a:\"ArtifactShareUnavailableAnalytics\"\n7b:I[79511,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\",\"$79\"],\"$7a\"]\n7c:I[136433,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\",\"$79\"],\"default\"]\n7d:I[412031,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$68\"],\"default\"]\n7e:\"/_next/static/immutable/chunks/0d5x924_3w965.js\"\n7f:\"/_next/static/immutable/chunks/2_lut5_pw-gwg.js\"\n80:\"/_next/static/immutable/chunks/2g8_ny7ludcvh.js\"\n81:\"/_next/static/immutable/chunks/09i3mful5ijg2.js\"\n82:\"/_next/static/immutable/chunks/24zrtqdhziwb7.js\"\n83:\"/_next/static/immutable/chunks/0_s4cdsu1ix0e.js\"\n84:\"/_next/static/immutable/chunks/3qbii6te7tlc_.js\"\n85:\"/_next/static/immutable/chunks/0dl79ybbrwdjx.js\"\n86:\"/_next/static/immutable/chunks/19n_txbtpwft5.js\"\n87:\"/_next/static/immutable/chunks/23xcww1uydkxj.js\"\n88:\"RelayClientContextProvider\"\n89:I[116923,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\",\"$7e\",\"$7f\",\"$80\",\"$81\",\"$82\",\"$83\",\"$84\",\"$85\",\"$86\",\"$87\"],\"$88\"]\n65:[\"$\",\"$L7b\",null,{\"embedSurface\":\"standalone\",\"children\":[false,[\"$\",\"$L7c\",null,{\"showHomeAction\":true}]]}]\n70:[\"$\",\"$L6a\",null,{\"locale\":\"en_US\",\"translationsUrl\":null,\"children\":[\"$\",\"$L7d\",null,{\"showHomeAction\":true}]}]\n77:[\"$\",\"$L89\",null,{\"preloads\":{\"{\\\"queryId\\\":\\\"3fb8466670ac25f73bf0a4587b4a19a8\\\",\\\"variables\\\":{\\\"artifactUuid\\\":\\\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\\\"}}\":{\"variables\":{\"artifactUuid\":\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\"},\"promise\":\"$@8a\",\"persist\":false}},\"serverParamsMap\":{\"useSlideDeckSharingQuery\":{}},\"params\":{\"id\":\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\"},\"searchParams\":{},\"requestParams\":{\"rankingSessionId\":\"6d73d7b9-d698-436b-bf32-22f8fbd9bfdd\"},\"children\":\"$L8b\"}]\n"])</script><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">self.__next_f.push([1,"8a:{\"data\":{\"slideDeckShareState\":{\"visibility\":null,\"canShare\":false,\"isPublic\":false,\"canDelete\":false,\"canReport\":false,\"canDownload\":false}}}\n"])</script><div hidden id="S:2">
-  </div><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">$RB=[];$RV=function(a){$RT=performance.now();for(var b=0;b<a.length;b+=2){var c=a[b],e=a[b+1];null!==e.parentNode&&e.parentNode.removeChild(e);var f=c.parentNode;if(f){var g=c.previousSibling,h=0;do{if(c&&8===c.nodeType){var d=c.data;if("/$"===d||"/&"===d)if(0===h)break;else h--;else"$"!==d&&"$?"!==d&&"$~"!==d&&"$!"!==d&&"&"!==d||h++}d=c.nextSibling;f.removeChild(c);c=d}while(c);for(;e.firstChild;)f.insertBefore(e.firstChild,c);g.data="$";g._reactRetry&&requestAnimationFrame(g._reactRetry)}}a.length=0};
-$RC=function(a,b){if(b=document.getElementById(b))(a=document.getElementById(a))?(a.previousSibling.data="$~",$RB.push(a,b),2===$RB.length&&("number"!==typeof $RT?requestAnimationFrame($RV.bind(null,$RB)):(a=performance.now(),setTimeout($RV.bind(null,$RB),2300>a&&2E3<a?2300-a:$RT+300-a)))):b.parentNode.removeChild(b)};$RC("B:2","S:2")</script><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">self.__next_f.push([1,"8c:\"ArtifactShareAnalyticsBoundary\"\n8d:I[539890,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\",\"$7e\",\"$7f\",\"$80\",\"$81\",\"$82\",\"$83\",\"$84\",\"$85\",\"$86\",\"$87\"],\"$8c\"]\n8e:\"ArtifactShareChannelProvider\"\n8f:I[423755,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\",\"$7e\",\"$7f\",\"$80\",\"$81\",\"$82\",\"$83\",\"$84\",\"$85\",\"$86\",\"$87\"],\"$8e\"]\n90:\"ArtifactShareHeader\"\n91:I[999197,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\",\"$7e\",\"$7f\",\"$80\",\"$81\",\"$82\",\"$83\",\"$84\",\"$85\",\"$86\",\"$87\"],\"$90\"]\n92:\"ArtifactShareContent\"\n93:I[20172,[\"$1\",\"$2\",\"$3\",\"$4\",\"$5\",\"$6\",\"$7\",\"$8\",\"$9\",\"$a\",\"$b\",\"$c\",\"$d\",\"$e\",\"$f\",\"$10\",\"$11\",\"$12\",\"$13\",\"$14\",\"$15\",\"$16\",\"$17\",\"$18\",\"$19\",\"$1a\",\"$1b\",\"$5a\",\"$5b\",\"$5c\",\"$5d\",\"$5e\",\"$5f\",\"$60\",\"$7e\",\"$7f\",\"$80\",\"$81\",\"$82\",\"$83\",\"$84\",\"$85\",\"$86\",\"$87\"],\"$92\"]\n8b:[[\"$\",\"$L8d\",\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\",{\"artifactUuid\":\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\",\"assetId\":\"1472245542633902\",\"artifactType\":\"code\",\"embedSurface\":\"standalone\",\"children\":[\"$\",\"$L8f\",\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\",{\"artifactUuid\":\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\",\"isMiniApp\":false,\"initialChannel\":\"$undefined\",\"children\":[[\"$\",\"$4c\",null,{\"fallback\":null,\"children\":[\"$\",\"$L91\",null,{\"title\":\"Server Final V7\",\"artifactTitle\":\"Server Final V7\",\"artifactUuid\":\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\",\"assetId\":\"1472245542633902\",\"assetType\":\"document\",\"isMiniApp\":false,\"canCreateYourOwn\":false,\"inviteOnlySharingEnabled\":false,\"reportableId\":\"1472245542633902\"}]}],[\"$\",\"$L93\",null,{\"sandboxUrl\":\"https://1472245542633902.a.metaaiusercontent.com/document?artifact_uuid=08880588-a4c6-451d-92a2-fc7fefbc4fe5\u0026ext=1794384000\u0026hash=Q5fpDAFLR2gCNG5Ki7u90w3R7tER\",\"deploymentUrl\":null,\"topSpacing\":null,\"artifactUuid\":\"08880588-a4c6-451d-92a2-fc7fefbc4fe5\",\"embedded\":false,\"embedSurface\":\"standalone\",\"assetType\":\"document\",\"artifactType\":null,\"fileExtension\":\"js\",\"displayTitle\":\"Server Final V7\",\"assetId\":\"1472245542633902\",\"slideCount\":null,\"signedUrlExpiresAt\":1794384000,\"inlineMediaSlots\":null,\"packagedView\":\"$undefined\",\"allowArtifactIdentity\":true,\"linkShimInfo\":null}]]}]}]]\n"])</script><link rel="preload" as="image" href="https://static.xx.fbcdn.net/assets/?set=meta_ai_assets&amp;name=meta-ai-orbit-favicon-180px-raster&amp;density=4x&amp;mode=dark"/>
-  <link rel="preload" as="image" href="https://static.xx.fbcdn.net/assets/?set=meta_ai_assets&amp;name=meta-ai-orbit-lockup-horizontal-mono-raster&amp;density=4x&amp;mode=dark"/>
-  <div hidden id="S:1">
-    <!--$-->
-    <!--/$-->
-    <!--$-->
-    <div class="flex shrink-0 items-center justify-between gap-3 p-4">
-      <div class="flex min-w-0 flex-1 items-center gap-3">
-        <a href="/" class="shrink-0 no-underline">
-          <img src="https://static.xx.fbcdn.net/assets/?set=meta_ai_assets&amp;name=meta-ai-orbit-favicon-180px-raster&amp;density=4x&amp;mode=dark" alt="Meta AI" class="h-5 w-5 max-w-none shrink-0 object-contain brightness-0 sm:hidden dark:invert"/>
-          <img src="https://static.xx.fbcdn.net/assets/?set=meta_ai_assets&amp;name=meta-ai-orbit-lockup-horizontal-mono-raster&amp;density=4x&amp;mode=dark" alt="Meta AI" class="hidden h-6 w-auto max-w-none shrink-0 brightness-0 sm:block dark:invert"/>
-        </a>
-        <div class="flex min-w-0 flex-col">
-          <span class="text-subheadline-medium text-text-primary truncate">Server Final V7</span>
-          <span class="text-caption-2 text-text-secondary truncate">Content is user generated and unverified.</span>
-        </div>
-      </div>
-      <div class="flex shrink-0 items-center gap-2">
-        <div class="contents">
-          <button aria-label="More" class="enabled:active:scale-98 inline-flex shrink-0 cursor-pointer items-center justify-center rounded-round focus:not-focus-visible:outline-none transition-transform duration-150 ease-in-out disabled:pointer-events-none disabled:opacity-50 select-none size-9 shadow-blur-elevation-01 backdrop-blur-elevation-01 enabled:hover:filter-[brightness(0.99)] enabled:active:filter-[brightness(0.975)] dark:enabled:active:filter-[brightness(0.9)] text-text-primary relative enabled:hover:after:absolute enabled:hover:after:inset-0 enabled:hover:after:rounded-round enabled:hover:after:bg-[rgba(255,255,255,0.025)] enabled:hover:after:content-[&#x27;&#x27;] dark:enabled:hover:filter-none bg-fill-blur-thick" data-slot="dropdown-menu-trigger" type="button" id="radix-_R_79danpfiv5udb_" aria-haspopup="menu" aria-expanded="false" data-state="closed">
-            <svg viewBox="0 0 32 32" fill="none" width="24" height="24" class="m-0.5">
-              <path d="M8 14.125a1.875 1.875 0 1 1 0 3.75 1.875 1.875 0 0 1 0-3.75zm8 0a1.875 1.875 0 1 1 0 3.75 1.875 1.875 0 0 1 0-3.75zm8 0a1.875 1.875 0 1 1 0 3.75 1.875 1.875 0 0 1 0-3.75z" fill="currentColor">
-              </path>
-            </svg>
-          </button>
-        </div>
-        <div class="contents">
-          <button class="enabled:active:scale-98 inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-0.5 focus:not-focus-visible:outline-none transition-transform duration-150 ease-in-out disabled:pointer-events-none disabled:opacity-50 rounded-round text-subheadline-medium h-9 px-3.5 text-text-on-accent enabled:hover:filter-[brightness(0.95)] enabled:active:filter-[brightness(0.9)] dark:enabled:hover:filter-[brightness(1.025)] dark:enabled:active:filter-[brightness(0.95)] bg-linear-to-r from-gradient-blue-indigo-650-stop1 to-gradient-blue-indigo-650-stop2 outline-offset-2" data-slot="button" data-testid="login-button">
-            <span class="truncate">Log in</span>
-          </button>
-        </div>
-        <div class="contents">
-          <button class="enabled:active:scale-98 inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-0.5 focus:not-focus-visible:outline-none transition-transform duration-150 ease-in-out disabled:pointer-events-none disabled:opacity-50 rounded-round text-subheadline-medium h-9 px-3.5 bg-fill-secondary-elevated enabled:hover:filter-[brightness(0.975)] enabled:active:filter-[brightness(0.965)] dark:enabled:hover:filter-[brightness(1.15)] dark:enabled:active:filter-[brightness(0.9)]" data-slot="button">
-            <span class="truncate">Sign up</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    <!--/$-->
-    <div class="relative min-h-0 flex-1">
-      <div class="absolute inset-0 flex items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="status" aria-label="Loading" data-visualcompletion="loading-state" class="animate-spin size-8 text-text-primary">
-          <path d="M12 2.75A9.25 9.25 0 0 1 21.25 12" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          </path>
-          <path d="M21.25 12A9.25 9.25 0 0 1 12 21.25" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6">
-          </path>
-          <path d="M12 21.25A9.25 9.25 0 0 1 2.75 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3">
-          </path>
-        </svg>
-      </div>
-      <iframe allow="autoplay; fullscreen" sandbox="allow-scripts allow-forms allow-same-origin allow-downloads" class="h-full w-full border-0 rounded-t-12" style="background-color:#ffffff;opacity:0" title="Shared artifact">
-      </iframe>
-    </div>
-  </div><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">$RS=function(a,b){a=document.getElementById(a);b=document.getElementById(b);for(a.parentNode.removeChild(a);a.firstChild;)b.parentNode.insertBefore(a.firstChild,b);b.parentNode.removeChild(b)};$RS("S:1","P:1")</script><script nonce="NDdhYmVhZjUtMjFhNy00YjRhLTlmOTgtYTQyMzI3YjgxZDFj">$RC("B:0","S:0")</script></body>
-</html>
+// Battle Cards - Server Final V7 - FIXED
+// freeze = 1, doubleChoice + replay online, targetBase=1, game_state after every pick
+const http = require('http');
+const WebSocket = require('ws');
+const PORT = process.env.PORT || 10000;
+const server = http.createServer((req,res)=>{ res.writeHead(200,{'Content-Type':'text/plain'}); res.end('Battle Cards WS V7 OK'); });
+const wss = new WebSocket.Server({ server });
+function deckFor(level){
+let cs=[]; const push=(t,v,a)=>{let c={type:t,opened:false}; if(v!=null)c.value=v; if(a!=null)c.amount=a; cs.push(c);};
+let vals = level===1?[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5,-10]:level===2?[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5]:[1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5];
+vals.forEach(v=>push('points',v));
+let sp = level===1 ? [['nextLevel'],['reverse'],['reverse'],['skip'],['skip'],['steal',null,3],['steal',null,3],['shield'],['shield'],['replay'],['bomb',null,3],['bomb',null,3],['shuffle'],['reset'],['doubleChoice'],['exchange'],['resetShield'],['points',7],['points',4],['resetPlayer'],['exchangePlayers'],['bombShield'],['stealShield'],['reflect'],['doubleSelf'],['doubleTarget']] : level===2 ? [['nextLevel'],['doubleTarget'],['doubleSelf'],['reverse'],['skip'],['resetPlayer'],['exchange'],['exchangePlayers'],['freeze'],['reset'],['stealAll'],['reflect'],['steal',null,5],['replay'],['reverseBalances'],['shieldSteal'],['resetShield'],['shieldReverse'],['shieldSkip'],['goldenShield'],['doubleChoice'],['randomBalances'],['bombAll'],['cancelShuffle'],['cancelReplay'],['shuffle'],['nextLevel']] : [['doubleTarget'],['doubleSelf'],['reverse'],['skip'],['resetPlayer'],['exchange'],['exchangePlayers'],['freeze'],['reset'],['stealAll'],['reflect'],['steal',null,5],['replay'],['reverseBalances'],['shieldSteal'],['resetShield'],['shieldReverse'],['shieldSkip'],['goldenShield'],['doubleChoice'],['randomBalances'],['bombAll'],['cancelShuffle'],['cancelReplay'],['randomPoints'],['shuffle']];
+sp.forEach(s=>push(s[0],s[1],s[2]));
+while(cs.length<45) cs.push({type:'points',value:[1,3,5,-2][cs.length%4],opened:false});
+cs=cs.slice(0,45);
+for(let i=cs.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1)); [cs[i],cs[j]]=[cs[j],cs[i]];}
+return cs;
+}
+function freshPlayers(names){
+return names.map((n,i)=>({id:i+1,name:n||('اللاعب '+(i+1)),score:0,shield:0,bombShield:0,stealShield:0,resetShield:0,reflect:0,shieldReverse:0,shieldSkip:0,goldenShield:0,cancelShuffle:0,cancelReplay:0,freeze:0}));
+}
+let waiting = []; // {ws,name,playerCount}
+let rooms = new Map(); // code -> game
+let wsToGame = new Map(); // ws -> {code, idx}
+function send(ws,o){ try{ if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(o)); }catch(e){} }
+function broadcast(game,o){ game.players.forEach(p=>{ if(p.ws) send(p.ws,o); }); }
+function roomCodeGen(){ return String(Math.floor(100000+Math.random()*900000)); }
+function publicState(game){
+return {
+type:'game_state',
+players: game.players.map(p=>({id:p.id,name:p.name,score:p.score,shield:p.shield,bombShield:p.bombShield,stealShield:p.stealShield,resetShield:p.resetShield,reflect:p.reflect,shieldReverse:p.shieldReverse,shieldSkip:p.shieldSkip,goldenShield:p.goldenShield,cancelShuffle:p.cancelShuffle,cancelReplay:p.cancelReplay,freeze:p.freeze})),
+cards: game.cards.map(c=>({type:c.type,value:c.value,amount:c.amount,opened:c.opened})),
+level: game.level, direction: game.direction,
+currentPlayer: game.current+1, currentPlayerBase:1,
+seconds: 15, roomCode: game.code
+};
+}
+function startGame(game){
+game.cards = deckFor(1);
+game.level=1; game.direction=1; game.current=0;
+game.players.forEach((p,i)=>{
+p.id=i+1;
+send(p.ws,{type:'game_start', myPlayerId:i+1, myPlayer:i+1, myIndex:i, players: game.players.map(x=>({id:x.id,name:x.name,score:0,shield:0,bombShield:0,stealShield:0,resetShield:0,reflect:0,shieldReverse:0,shieldSkip:0,goldenShield:0,cancelShuffle:0,cancelReplay:0,freeze:0})), cards: game.cards, level:1, direction:1, currentPlayer:1, currentPlayerBase:1, seconds:15, roomCode: game.code});
+});
+startTimer(game);
+}
+function startTimer(game){
+clearInterval(game.timer);
+game.seconds=15;
+game.timer=setInterval(()=>{
+if(!game.started) return;
+game.seconds--;
+broadcast(game,{type:'timer',seconds:game.seconds});
+if(game.seconds<=0){
+broadcast(game,{type:'turn_skipped'});
+advance(game,1);
+game.seconds=15;
+broadcast(game, publicState(game));
+}
+},1000);
+}
+function advance(game, steps){
+let left=steps||1, guard=0;
+while(left>0 && guard<30){
+guard++;
+game.current = game.direction===1 ? (game.current+1)%game.players.length : (game.current-1+game.players.length)%game.players.length;
+let p=game.players[game.current];
+if(p && p.freeze>0){ p.freeze--; left++; }
+left--;
+}
+}
+function checkEnd(game){
+if(!game.cards.every(c=>c.opened)) return false;
+clearInterval(game.timer);
+let best=Math.max(...game.players.map(p=>p.score));
+let win=game.players.filter(p=>p.score===best);
+broadcast(game,{type:'game_over', winner: win.length===1? win[0].name : null, players: game.players.map(p=>({id:p.id,name:p.name,score:p.score,shield:p.shield,bombShield:p.bombShield,stealShield:p.stealShield,resetShield:p.resetShield,reflect:p.reflect,shieldReverse:p.shieldReverse,shieldSkip:p.shieldSkip,goldenShield:p.goldenShield,cancelShuffle:p.cancelShuffle,cancelReplay:p.cancelReplay,freeze:p.freeze}))});
+game.started=false;
+return true;
+}
+// Apply effect - server is source of truth. Returns true if turn should advance.
+function applyEffect(game, card, pickerIdx, targetIdx, firstIdx, extra){
+let players=game.players;
+let me=players[pickerIdx];
+let t = targetIdx!=null ? players[targetIdx] : null;
+let amt = card.amount!=null?card.amount:3;
+// replay / doubleChoice are handled by caller - they call applyEffect again with chosen card
+if(card.type==='points'){
+let v=card.value||0;
+if(v<0 && me.shield>0){ me.shield--; }
+else me.score+=v;
+}
+else if(card.type==='shield'){ me.shield++; }
+else if(card.type==='stealShield'||card.type==='shieldSteal'){ me.stealShield++; }
+else if(card.type==='resetShield'){ me.resetShield++; }
+else if(card.type==='shieldReverse'){ me.shieldReverse++; }
+else if(card.type==='shieldSkip'){ me.shieldSkip++; }
+else if(card.type==='goldenShield'){ me.goldenShield++; }
+else if(card.type==='bombShield'){ me.bombShield++; }
+else if(card.type==='reflect'){ me.reflect++; }
+else if(card.type==='cancelShuffle'){ me.cancelShuffle++; }
+else if(card.type==='cancelReplay'){ me.cancelReplay++; }
+else if(card.type==='reverse'){
+let nx=players[(pickerIdx+game.direction+players.length)%players.length];
+if(nx && nx.shieldReverse>0){ nx.shieldReverse--; }
+else game.direction=-game.direction;
+}
+else if(card.type==='skip'){
+let n2=players[(pickerIdx+game.direction+players.length)%players.length];
+if(n2 && n2.shieldSkip>0){ n2.shieldSkip--; advance(game,1); return; }
+else { advance(game,2); return; }
+}
+else if(card.type==='doubleSelf'){ me.score*=2; }
+else if(card.type==='reset'){ players.forEach(p=>{ if(p===me) return; if(p.goldenShield>0) p.goldenShield--; else if(p.resetShield>0) p.resetShield--; else p.score=0; }); }
+else if(card.type==='stealAll'){ let g=0; players.forEach(p=>{ if(p===me) return; if(p.goldenShield>0) p.goldenShield--; else if(p.stealShield>0) p.stealShield--; else { g+=Math.max(0,p.score); p.score-=Math.max(0,p.score); } }); me.score+=g; }
+else if(card.type==='reverseBalances'){ players.forEach(p=>{ if(p!==me) p.score=-p.score; }); }
+else if(card.type==='bombAll'){ players.forEach(p=>{ if(p===me) return; if(p.goldenShield>0) p.goldenShield--; else if(p.bombShield>0) p.bombShield--; else p.score-=5; }); }
+else if(card.type==='randomPoints'){ let vals=[-10,-5,-2,1,3,5,7,10]; let v=vals[Math.floor(Math.random()*vals.length)]; me.score+=v; }
+else if(card.type==='randomBalances'){ let sc=players.map(p=>p.score); for(let i=sc.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1)); [sc[i],sc[j]]=[sc[j],sc[i]];} players.forEach((p,i)=>p.score=sc[i]); }
+else if(card.type==='shuffle'){
+// check cancelShuffle of others
+let canceller = players.find(p=>p!==me && p.cancelShuffle>0);
+if(canceller){ canceller.cancelShuffle--; }
+else {
+let closedIdx=[]; game.cards.forEach((cc,i)=>{ if(!cc.opened) closedIdx.push(i); });
+let vals=closedIdx.map(i=>game.cards[i]);
+for(let i=vals.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1)); [vals[i],vals[j]]=[vals[j],vals[i]];}
+closedIdx.forEach((idx,k)=>game.cards[idx]=vals[k]);
+// keep opened state: all closed cards stay closed, opened stay opened
+broadcast(game,{type:'cards_shuffled', cards: game.cards});
+}
+}
+else if(card.type==='nextLevel'){
+if(game.level>=3) return;
+game.level++;
+game.cards=deckFor(game.level);
+players.forEach(p=>{ p.shield=0;p.bombShield=0;p.stealShield=0;p.resetShield=0;p.reflect=0;p.shieldReverse=0;p.shieldSkip=0;p.goldenShield=0;p.cancelShuffle=0;p.cancelReplay=0;p.freeze=0; });
+broadcast(game,{type:'level_changed', level: game.level, cards: game.cards});
+// don't advance extra - normal advance below will happen, but reset current to 0 for new level? keep current
+advance(game,1); return;
+}
+else if(card.type==='steal' && t){
+if(t.goldenShield>0) t.goldenShield--;
+else if(t.stealShield>0) t.stealShield--;
+else if(t.reflect>0){ t.reflect--; let take=Math.min(amt,Math.max(0,me.score)); me.score-=take; t.score+=take; }
+else { let take=Math.min(amt,Math.max(0,t.score)); t.score-=take; me.score+=take; }
+}
+else if(card.type==='bomb' && t){
+if(t.goldenShield>0) t.goldenShield--;
+else if(t.bombShield>0) t.bombShield--;
+else t.score-=amt;
+}
+else if(card.type==='doubleTarget' && t){
+if(t.goldenShield>0) t.goldenShield--; else t.score*=2;
+}
+else if(card.type==='resetPlayer' && t){
+if(t.goldenShield>0) t.goldenShield--;
+else if(t.resetShield>0) t.resetShield--;
+else t.score=0;
+}
+else if(card.type==='exchange' && t){
+if(t.goldenShield>0) t.goldenShield--;
+else { let tmp=me.score; me.score=t.score; t.score=tmp; }
+}
+else if(card.type==='exchangePlayers'){
+if(firstIdx!=null && t){
+let a=players[firstIdx];
+if(a && a!==t){ let tmp=a.score; a.score=t.score; t.score=tmp; }
+} else if(t){
+let tmp=me.score; me.score=t.score; t.score=tmp;
+}
+}
+else if(card.type==='freeze' && t){
+// FIX: freeze = 1 (was 2)
+t.freeze=1;
+}
+advance(game,1);
+}
+function handlePick(game, ws, msg){
+let idx = Number(msg.cardIndex);
+if(!Number.isFinite(idx) || !game.cards[idx] || game.cards[idx].opened){
+send(ws,{type:'error', message:'بطاقة غير صالحة'});
+return;
+}
+let pickerIdx = game.players.findIndex(p=>p.ws===ws);
+if(pickerIdx!==game.current){
+send(ws,{type:'error', message:'ماشي دورك'});
+return;
+}
+let card = game.cards[idx];
+// Cards that need target: if no target provided, ask client for target
+let needTarget = ['steal','bomb','doubleTarget','resetPlayer','exchange','exchangePlayers','freeze'];
+if(needTarget.includes(card.type) && msg.target==null){
+send(ws,{type:'need_target', cardIndex:idx, cardType:card.type});
+return;
+}
+// doubleChoice: client sends choiceIndex = which of the two revealed cards to activate
+// In this server, doubleChoice flow: first pick of doubleChoice card itself -> reveal it, then client picks 2 closed cards via doubleChoicePick?
+// Simplified compatible flow: if msg.choiceIndex != null, activate that card. If msg.doubleChoicePick, handle.
+// If card is doubleChoice and no choiceIndex, we reveal it and wait for choice
+if(card.type==='doubleChoice' && msg.choiceIndex==null){
+// reveal doubleChoice card, tell client to pick 2
+card.opened=true;
+broadcast(game,{type:'card_picked', cardIndex:idx, card:card, currentPlayer: game.current+1, currentPlayerBase:1});
+send(ws,{type:'need_target', cardIndex:idx, cardType:'doubleChoice'});
+// store pending
+game.pendingDoubleChoice = {picker: pickerIdx, cardIndex: idx};
+return;
+}
+if(card.type==='doubleChoice' && msg.choiceIndex!=null){
+// activate chosen card
+let chosenIdx = Number(msg.choiceIndex);
+let chosen = game.cards[chosenIdx];
+if(chosen && !chosen.opened) chosen.opened=true;
+broadcast(game,{type:'card_picked', cardIndex:chosenIdx, card:chosen, currentPlayer: game.current+1, currentPlayerBase:1});
+if(chosen) applyEffect(game, chosen, pickerIdx, null, null);
+game.pendingDoubleChoice=null;
+if(checkEnd(game)) return;
+game.seconds=15;
+broadcast(game, publicState(game));
+return;
+}
+if(card.type==='replay' && msg.replayIndex==null){
+card.opened=true;
+broadcast(game,{type:'card_picked', cardIndex:idx, card:card, currentPlayer: game.current+1, currentPlayerBase:1});
+send(ws,{type:'need_target', cardIndex:idx, cardType:'replay'});
+game.pendingReplay = {picker: pickerIdx, cardIndex: idx};
+return;
+}
+if(card.type==='replay' && msg.replayIndex!=null){
+let replayIdx = Number(msg.replayIndex);
+let replayCard = game.cards[replayIdx];
+if(replayCard && replayCard.opened){
+broadcast(game,{type:'card_picked', cardIndex:replayIdx, card:replayCard, currentPlayer: game.current+1, currentPlayerBase:1});
+applyEffect(game, replayCard, pickerIdx, null, null);
+}
+game.pendingReplay=null;
+if(checkEnd(game)) return;
+game.seconds=15;
+broadcast(game, publicState(game));
+return;
+}
+// Normal pick
+card.opened=true;
+// resolve target indices: client sends 1-based (targetBase=1)
+let targetIdx=null, firstIdx=null;
+if(msg.target!=null){
+let tb = msg.targetBase===1 ? 1 : (msg.targetBase===0 ? 0 : 1);
+targetIdx = Number(msg.target) - tb;
+}
+if(msg.first!=null){
+let fb = msg.firstBase===1 ? 1 : (msg.firstBase===0 ? 0 : 1);
+firstIdx = Number(msg.first) - fb;
+}
+broadcast(game,{type:'card_picked', cardIndex:idx, card:card, currentPlayer: game.current+1, currentPlayerBase:1});
+applyEffect(game, card, pickerIdx, targetIdx, firstIdx, msg);
+if(checkEnd(game)) return;
+game.seconds=15;
+broadcast(game, publicState(game));
+}
+function tryMatch(){
+// group waiting by playerCount
+for(let i=0;i<waiting.length;i++){
+let w=waiting[i];
+let group = waiting.filter(x=>x.playerCount===w.playerCount);
+if(group.length>=w.playerCount){
+let chosen = group.slice(0,w.playerCount);
+waiting = waiting.filter(x=>!chosen.includes(x));
+let code=roomCodeGen();
+let game={code, players: chosen.map(c=>({ws:c.ws, name:c.name})), cards:[], level:1, direction:1, current:0, started:true, seconds:15};
+// init player objects
+game.players = freshPlayers(chosen.map(c=>c.name));
+game.players.forEach((p,idx)=>{ p.ws=chosen[idx].ws; });
+rooms.set(code,game);
+chosen.forEach((c,idx)=>{ wsToGame.set(c.ws,{code, idx}); });
+startGame(game);
+}
+}
+}
+wss.on('connection',(ws)=>{
+ws.on('message',(raw)=>{
+let msg; try{ msg=JSON.parse(String(raw)); }catch(e){ return; }
+let type=String(msg.type||'');
+if(type==='find_match'){
+let name=String(msg.name||'اللاعب 1').slice(0,20);
+let pc=Number(msg.playerCount)||2;
+waiting.push({ws,name,playerCount:pc});
+send(ws,{type:'waiting', players: waiting.filter(w=>w.playerCount===pc).map(w=>w.name), current: waiting.filter(w=>w.playerCount===pc).length, total: pc});
+tryMatch();
+// broadcast waiting update to group
+waiting.filter(w=>w.playerCount===pc).forEach(w=> send(w.ws,{type:'waiting', players: waiting.filter(x=>x.playerCount===pc).map(x=>x.name), current: waiting.filter(x=>x.playerCount===pc).length, total: pc}));
+return;
+}
+if(type==='create_room'){
+let name=String(msg.name||'اللاعب 1').slice(0,20);
+let pc=Number(msg.playerCount)||2;
+let code=roomCodeGen();
+let game={code, players:[{ws, name}], cards:[], level:1, direction:1, current:0, started:false, seconds:15, total:pc};
+game.players = freshPlayers([name]);
+game.players[0].ws=ws;
+rooms.set(code,game);
+wsToGame.set(ws,{code, idx:0});
+send(ws,{type:'room_created', roomCode:code});
+send(ws,{type:'room_players', players:[name], current:1, total:pc, roomCode:code});
+return;
+}
+if(type==='join_room'){
+let code=String(msg.roomCode||'');
+let game=rooms.get(code);
+if(!game){ send(ws,{type:'room_error', message:'الغرفة غير موجودة'}); return; }
+if(game.started){ send(ws,{type:'room_error', message:'الجولة بدأت'}); return; }
+let name=String(msg.name||'اللاعب 1').slice(0,20);
+game.players.push({ws, name});
+// rebuild freshPlayers keeping names
+let names=game.players.map(p=>p.name);
+let oldWs=game.players.map(p=>p.ws);
+game.players=freshPlayers(names);
+game.players.forEach((p,i)=>p.ws=oldWs[i]);
+game.players.forEach((p,i)=> wsToGame.set(p.ws,{code, idx:i}));
+let total=game.total||2;
+broadcast(game,{type:'room_players', players: names, current: names.length, total, roomCode:code});
+if(names.length>=total){
+game.started=true;
+startGame(game);
+}
+return;
+}
+if(type==='cancel_search'){
+waiting=waiting.filter(w=>w.ws!==ws);
+send(ws,{type:'search_cancelled'});
+return;
+}
+if(type==='leave_game'){
+let info=wsToGame.get(ws);
+if(info){
+let game=rooms.get(info.code);
+if(game){
+clearInterval(game.timer);
+broadcast(game,{type:'player_disconnected', player: game.players[info.idx]?.name});
+rooms.delete(info.code);
+}
+wsToGame.delete(ws);
+}
+waiting=waiting.filter(w=>w.ws!==ws);
+send(ws,{type:'left_game'});
+return;
+}
+if(type==='chat'){
+let info=wsToGame.get(ws);
+if(info){
+let game=rooms.get(info.code);
+if(game) broadcast(game,{type:'chat', name:String(msg.name||'لاعب'), message:String(msg.message||'')});
+}
+return;
+}
+if(type==='get_state' || type==='sync' || type==='request_state'){
+let info=wsToGame.get(ws);
+if(info){
+let game=rooms.get(info.code);
+if(game) send(ws, publicState(game));
+}
+return;
+}
+if(type==='pick_card'){
+let info=wsToGame.get(ws);
+if(!info){ send(ws,{type:'error', message:'ماكش في غرفة'}); return; }
+let game=rooms.get(info.code);
+if(!game) return;
+handlePick(game, ws, msg);
+return;
+}
+});
+ws.on('close',()=>{
+waiting=waiting.filter(w=>w.ws!==ws);
+let info=wsToGame.get(ws);
+if(info){
+let game=rooms.get(info.code);
+if(game && game.started){
+broadcast(game,{type:'player_disconnected', player: game.players[info.idx]?.name});
+}
+wsToGame.delete(ws);
+}
+});
+});
+server.listen(PORT,()=>console.log('WS V7 listening on '+PORT));
