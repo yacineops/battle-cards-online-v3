@@ -202,7 +202,7 @@
       return '<div data-card="'+i+'" class="card'+openedCls+'" style="height:auto;min-height:0;border-radius:10px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .45s;transform:'+(c.opened?"rotateY(180deg)":"none")+'">'
         + '<div class="face back" style="position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#263f59,#3a5a7c);border:2px solid #5a7d9c;font-size:20px;backface-visibility:hidden">🃏</div>'
         + '<div class="face front" style="position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+frontBg+';color:#111;border:2px solid #fff;transform:rotateY(180deg);backface-visibility:hidden;overflow:hidden">'
-        + '<div style="font-size:'+(c.type==="points"?"40px":"38px")+';font-weight:900;line-height:1;text-align:center">'+(c.icon||"⭐")+'</div>'
+        + '<div style="font-size:'+(c.type==="points"?"30px":"30px")+';font-weight:900;line-height:1;text-align:center">'+(c.icon||"⭐")+'</div>'
         + '</div></div>';
     }).join("");
     // نفس تخطيط domino-board الأصلي
@@ -276,7 +276,7 @@
         let openedList=(game.cards||[]).map((cc,ii)=>({cc,ii})).filter(x=>x.cc.opened);
         let picker=document.createElement("div"); picker.id="bc-replay-picker";
         picker.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1700;display:flex;align-items:center;justify-content:center;padding:20px";
-        let items=openedList.map(x=>'<button data-replay-pick="'+x.ii+'" style="border:3px solid #00e676;border-radius:16px;padding:16px 10px;background:#fff;color:#111;cursor:pointer;min-width:92px;min-height:92px;display:flex;align-items:center;justify-content:center"><div style="font-size:44px;line-height:1;font-weight:900">'+(x.cc.icon||"⭐")+'</div></button>').join("");
+        let items=openedList.map(x=>'<button data-replay-pick="'+x.ii+'" style="border:3px solid #00e676;border-radius:16px;padding:16px 10px;background:#fff;color:#111;cursor:pointer;min-width:92px;min-height:92px;display:flex;align-items:center;justify-content:center"><div style="font-size:32px;line-height:1;font-weight:900">'+(x.cc.icon||"⭐")+'</div></button>').join("");
         picker.innerHTML='<div style="background:#1e2a38;border-radius:22px;padding:22px;width:100%;max-width:360px;text-align:center;color:#fff"><div style="font-size:44px">♻️</div><div style="font-size:19px;font-weight:900;margin:6px 0">اختر بطاقة مكشوفة لإعادة تفعيلها</div><div style="color:#b0c4de;font-size:13px;margin-bottom:12px">اضغط على واحدة من البطاقات</div><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-height:320px;overflow-y:auto">'+items+'</div><button id="bc-replay-cancel" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;background:#455a64;color:#fff;margin-top:14px">❌ إلغاء</button></div>';
         document.body.appendChild(picker);
         picker.querySelectorAll("[data-replay-pick]").forEach(b=>{
