@@ -1,4 +1,4 @@
-// battle-online-v6.js - V15 - FIX: Start opens ORIGINAL game unchanged
+// battle-online-v6.js - V13.1 - كامل - إصلاح الرجوع للصفحة 1 + المغادرة + بدون تغيير مبدأ اللعبة
 (function(){
 "use strict";
 const WS_URL = "wss://battle-cards-online-v2.onrender.com";
@@ -12,7 +12,6 @@ let maxPlayers = 2;
 let playerNames = [];
 let joinTimer = null;
 let gameStarted = false;
-let originalLaunched = false;
 function saveName(n){
 myName = (n || "").trim().slice(0,20) || "اللاعب 1";
 try { localStorage.setItem("bc_player_name", myName); } catch(e){}
@@ -32,6 +31,8 @@ function closeOverlay(){
 let o = document.getElementById("bc-online-overlay");
 if(o) o.remove();
 }
+// V13.1 - إصلاح الرجوع للصفحة 1: لا نخفي أي شيء بـ display:none
+// نضغط فقط على زر رجوع تاع الـ Modal المحلي، ونعيد إظهار الصفحة 1 إذا كانت مخفية بالخطأ
 function closeReactModal(){
 try{
 let allBtns = Array.from(document.querySelectorAll("button"));
@@ -39,13 +40,19 @@ let backs = allBtns.filter(function(b){
 let t = (b.textContent||"").trim();
 return t.indexOf("رجوع") !== -1 && b.offsetParent !== null;
 });
-if(backs.length > 0){ backs[backs.length - 1].click(); }
+if(backs.length > 0){
+backs[backs.length - 1].click();
+}
+// نعيد إظهار الصفحة 1 إذا كانت مخفية من نسخة قديمة
 document.querySelectorAll("div").forEach(function(el){
 if(el.style && el.style.display === "none"){
 let tx = el.textContent || "";
-if(tx.indexOf("العب ضد الحاسوب") !== -1 || tx.indexOf("كيف تلعب") !== -1 || tx.indexOf("العب أونلاين") !== -1){ el.style.display = ""; }
+if(tx.indexOf("العب ضد الحاسوب") !== -1 || tx.indexOf("كيف تلعب") !== -1 || tx.indexOf("العب أونلاين") !== -1){
+el.style.display = "";
+}
 }
 });
+// نتأكد أن body ظاهر
 if(document.body && document.body.style) document.body.style.display = "";
 }catch(e){}
 }
@@ -124,7 +131,7 @@ setTimeout(openJoin, 800);
 if(type === "game_started"){
 gameStarted = true;
 toast("▶️ بدأت اللعبة!");
-launchOriginalGame();
+openGameScreen();
 }
 if(type === "player_left"){
 playerCount = Math.max(1, playerCount - 1);
@@ -161,48 +168,26 @@ startBtn.textContent = "⏳ نستنى " + (maxPlayers - playerCount) + " لاع
 }
 }
 }
-// ===== V15 FIX =====
-// لا نعرض شاشة أسماء فقط. نغلق كل الـ Overlays ونفتح اللعبة الأصلية نفسها
-// بالضغط على أزرارها الأصلية: اختيار العدد ثم "ابدأ اللعب".
-// هذا لا يغيّر أي شيء في index.html.
-function launchOriginalGame(){
-if(originalLaunched) return;
-originalLaunched = true;
+function openGameScreen(){
 gameStarted = true;
-closeOverlay();
-// أغلق أي Modal محلي مفتوح (قائمة أونلاين المحلية) لنرجع للصفحة 1
-closeReactModal();
-// أعط React وقت يرجع للصفحة 1
-setTimeout(function(){
-closeOverlay();
-// 1) اختر عدد اللاعبين في الصفحة 1 (أزرار "2 لاعبين" / "3 لاعبين" / "4 لاعبين")
-try{
-let btns = Array.from(document.querySelectorAll("button"));
-let countBtn = btns.find(function(b){
-let t = (b.textContent||"").trim();
-return t.indexOf(maxPlayers + " لاعبين") !== -1 && b.offsetParent !== null && t.indexOf("ابدأ") === -1;
-});
-if(countBtn) countBtn.click();
-}catch(e){}
-// 2) اضغط "ابدأ اللعب" الأصلي
-setTimeout(function(){
-try{
-let btns = Array.from(document.querySelectorAll("button"));
-let start = btns.find(function(b){
-let t = (b.textContent||"").trim();
-return t.indexOf("ابدأ اللعب") !== -1 && b.offsetParent !== null;
-});
-if(start){ start.click(); toast("▶️ بدأت اللعبة الأصلية!"); }
-else { toast("❌ لم أجد زر ابدأ اللعب - ارجع للصفحة 1 واضغطه"); originalLaunched = false; }
-}catch(e){ originalLaunched = false; }
-}, 350);
-}, 250);
+showOverlay("🎮 لعبة أونلاين - بدأت!",
+'<p style="color:#ffc107;font-size:15px;font-weight:700;margin:0 0 6px">غرفة: ' + myCode + ' • ' + playerCount + ' / ' + maxPlayers + '</p>'
++ '<div style="background:rgba(255,255,255,.08);border-radius:14px;padding:12px;margin:10px 0;text-align:right;line-height:2">'
++ (playerNames && playerNames.length ? playerNames.map(function(n){ return "<div>✅ " + n + (n===myName ? " (أنت)" : "") + "</div>"; }).join("") : "<div>✅ " + myName + " (أنت)</div>")
++ '</div>'
++ '<p style="color:#b0c4de;font-size:13px;line-height:1.7;margin:8px 0">أنت الآن داخل اللعبة أونلاين.<br>طاولة البطاقات الأصلية ستظهر هنا في المرحلة القادمة بدون تغيير مبدأ لعبتك.</p>'
++ '<button id="bc-leave-game" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:10px 0 0">🚪 مغادرة الغرفة</button>'
+);
+document.getElementById("bc-leave-game").onclick = function(){
+gameStarted = false;
+sendSafe({ type:"leave", code: myCode });
+myCode = ""; playerCount = 1; playerNames = [myName];
+toast("👋 غادرت الغرفة");
+openMenu();
+};
 }
-// للتوافق: أي كود قديم ينادي openGameScreen يفتح اللعبة الأصلية
-function openGameScreen(){ launchOriginalGame(); }
 function openMenu(){
 gameStarted = false;
-originalLaunched = false;
 showOverlay("🌐 العب أونلاين",
 '<p style="color:#b0c4de;font-size:14px;margin:0 0 10px">اختر عدد اللاعبين أولًا، بعدها اختر طريقة اللعب.</p>'
 + '<label style="display:block;text-align:right;font-size:13px;color:#b0c4de;margin-bottom:4px">اسمك<br>
@@ -216,6 +201,7 @@ showOverlay("🌐 العب أونلاين",
 );
 bindCountSelector();
 document.getElementById("bc-name").addEventListener("input", function(e){ saveName(e.target.value); });
+// رجوع للصفحة 1: نغلق شاشتنا ونغلق الـ Modal المحلي، بدون إخفاء الصفحة
 document.getElementById("bc-close").onclick = function(){
 closeOverlay();
 setTimeout(closeReactModal, 100);
@@ -281,8 +267,7 @@ document.getElementById("bc-cancel").onclick = function(){ sendSafe({ type:"leav
 document.getElementById("bc-start-btn").onclick = function(){
 if(playerCount < maxPlayers){ toast("مازال ناقص " + (maxPlayers - playerCount) + " لاعب"); return; }
 sendSafe({ type:"start", code: myCode });
-// لا نفتح شاشة أسماء، نفتح اللعبة الأصلية مباشرة
-launchOriginalGame();
+openGameScreen();
 };
 }
 function handleOpen(e){
@@ -295,5 +280,5 @@ setTimeout(openMenu, 80);
 }
 }
 document.addEventListener("click", handleOpen, false);
-console.log("✅ Battle Online V15 - Start opens original game");
+console.log("✅ Battle Online V13.1 - back to page 1 fixed");
 })();
