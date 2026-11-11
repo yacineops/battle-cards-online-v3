@@ -1,4 +1,4 @@
-// battle-online-v6.js - V13.1 - كامل - إصلاح الرجوع للصفحة 1 + المغادرة + بدون تغيير مبدأ اللعبة
+// battle-online-v6.js - V14 FINAL - طاولة 45 بطاقة حقيقية داخل الغرفة + مزامنة كاملة
 (function(){
   "use strict";
   const WS_URL = "wss://battle-cards-online-v2.onrender.com";
@@ -12,12 +12,13 @@
   let playerNames = [];
   let joinTimer = null;
   let gameStarted = false;
+  let game = null; // {cards, scores, names, current, direction, level, lastMsg, winner}
+  let myIndex = -1;
 
   function saveName(n){
     myName = (n || "").trim().slice(0,20) || "اللاعب 1";
     try { localStorage.setItem("bc_player_name", myName); } catch(e){}
   }
-
   function toast(msg){
     let t = document.getElementById("bc-online-toast");
     if(!t){
@@ -29,52 +30,32 @@
     t.textContent = msg; t.style.display = "block";
     clearTimeout(t._h); t._h = setTimeout(()=>{ t.style.display="none"; }, 4000);
   }
-
   function closeOverlay(){
     let o = document.getElementById("bc-online-overlay");
     if(o) o.remove();
   }
-
-  // V13.1 - إصلاح الرجوع للصفحة 1: لا نخفي أي شيء بـ display:none
-  // نضغط فقط على زر رجوع تاع الـ Modal المحلي، ونعيد إظهار الصفحة 1 إذا كانت مخفية بالخطأ
   function closeReactModal(){
     try{
-      let allBtns = Array.from(document.querySelectorAll("button"));
-      let backs = allBtns.filter(function(b){
+      let backs = Array.from(document.querySelectorAll("button")).filter(function(b){
         let t = (b.textContent||"").trim();
         return t.indexOf("رجوع") !== -1 && b.offsetParent !== null;
       });
-      if(backs.length > 0){
-        backs[backs.length - 1].click();
-      }
-      // نعيد إظهار الصفحة 1 إذا كانت مخفية من نسخة قديمة
-      document.querySelectorAll("div").forEach(function(el){
-        if(el.style && el.style.display === "none"){
-          let tx = el.textContent || "";
-          if(tx.indexOf("العب ضد الحاسوب") !== -1 || tx.indexOf("كيف تلعب") !== -1 || tx.indexOf("العب أونلاين") !== -1){
-            el.style.display = "";
-          }
-        }
-      });
-      // نتأكد أن body ظاهر
+      if(backs.length > 0) backs[backs.length - 1].click();
       if(document.body && document.body.style) document.body.style.display = "";
     }catch(e){}
   }
-
   function showOverlay(title, innerHTML){
     closeOverlay();
     let o = document.createElement("div");
     o.id = "bc-online-overlay";
-    o.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;touch-action:manipulation";
-    o.innerHTML = '<div id="bc-box" style="background:#1e2a38;border-radius:20px;padding:22px;width:100%;max-width:360px;text-align:center;color:#fff">'
+    o.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto;touch-action:manipulation";
+    o.innerHTML = '<div id="bc-box" style="background:#1e2a38;border-radius:20px;padding:16px;width:100%;max-width:520px;text-align:center;color:#fff">'
       + '<h3 style="margin:0 0 8px;font-size:20px">' + title + '</h3>' + innerHTML + '</div>';
     o.addEventListener("click", function(e){ if(e.target === o){ e.preventDefault(); } });
     document.body.appendChild(o);
     return o;
   }
-
   function btn(c1,c2,txt){ return "width:100%;border:0;border-radius:14px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,"+c1+","+c2+");color:"+txt+";margin:5px 0"; }
-
   function countSelector(){
     return '<div style="margin:10px 0 6px"><div style="font-size:13px;color:#b0c4de;margin-bottom:6px">👥 اختر عدد اللاعبين</div>'
       + '<div style="display:flex;gap:8px;justify-content:center">'
@@ -85,7 +66,6 @@
       + '</div>'
       + '<div id="bc-count-label" style="font-size:12px;color:#ffc107;margin-top:6px">المختار الآن: ' + maxPlayers + ' لاعبين</div></div>';
   }
-
   function bindCountSelector(){
     document.querySelectorAll(".bc-count-btn").forEach(function(b){
       b.onclick = function(){
@@ -100,7 +80,6 @@
       };
     });
   }
-
   function connect(){
     return new Promise(function(resolve, reject){
       if(ws && ws.readyState === 1) return resolve(ws);
@@ -108,16 +87,17 @@
       ws = new WebSocket(WS_URL);
       ws.onopen = function(){ resolve(ws); };
       ws.onerror = function(){ reject(new Error("WS")); };
+      ws.onclose = function(){ if(gameStarted) toast("⚠️ انقطع الاتصال بالسيرفر"); };
       ws.onmessage = function(ev){
         try{
           let d = JSON.parse(ev.data);
           let type = (d.type || "").toLowerCase();
           if(d.maxPlayers) maxPlayers = parseInt(d.maxPlayers,10) || maxPlayers;
           if(d.names) playerNames = d.names;
+          if(d.game) game = d.game;
           if(type === "room_created"){
             if(d.code) myCode = String(d.code);
-            playerCount = 1;
-            if(d.names) playerNames = d.names;
+            playerCount = 1; myIndex = 0;
             updateWaiting();
           }
           if(type === "joined" || type === "player_joined" || type === "room_update" || type === "match_found"){
@@ -126,6 +106,7 @@
             if(Array.isArray(d.players)) playerCount = d.players.length;
             if(typeof d.count === "number") playerCount = d.count;
             clearTimeout(joinTimer);
+            if(playerNames) myIndex = playerNames.indexOf(myName);
             if(type === "match_found"){ toast("🎉 اكتمل العدد! " + playerCount + " / " + maxPlayers); openWaiting(); }
             else if(!gameStarted) updateWaiting();
             if(playerCount >= maxPlayers && !gameStarted) toast("🎉 اكتمل العدد! " + playerCount + " / " + maxPlayers);
@@ -133,27 +114,31 @@
           if(type === "error"){
             clearTimeout(joinTimer);
             toast("❌ " + (d.message || "الغرفة غير موجودة"));
-            setTimeout(openJoin, 800);
+            if(!gameStarted) setTimeout(openJoin, 800);
           }
-          if(type === "game_started"){
+          if(type === "game_started" || type === "card_revealed" || type === "game_state"){
             gameStarted = true;
-            toast("▶️ بدأت اللعبة!");
-            openGameScreen();
+            if(d.game) game = d.game;
+            if(playerNames) myIndex = playerNames.indexOf(myName);
+            renderGame();
+          }
+          if(type === "game_over"){
+            if(d.game) game = d.game;
+            renderGame(true);
           }
           if(type === "player_left"){
             playerCount = Math.max(1, playerCount - 1);
             if(!gameStarted) updateWaiting();
+            else if(game) renderGame();
           }
         }catch(e){}
       };
     });
   }
-
   function sendSafe(obj){
     try{ if(ws && ws.readyState === 1){ ws.send(JSON.stringify(obj)); return true; } }catch(e){}
     return false;
   }
-
   function updateWaiting(){
     let codeEl = document.getElementById("bc-code");
     let countEl = document.getElementById("bc-count");
@@ -162,7 +147,7 @@
     if(codeEl) codeEl.textContent = myCode || "••••••";
     if(countEl) countEl.textContent = "👥 اللاعبون: " + playerCount + " / " + maxPlayers;
     if(namesEl){
-      if(playerNames && playerNames.length) namesEl.innerHTML = playerNames.map(function(n){ return "<div>✅ " + n + "</div>"; }).join("");
+      if(playerNames && playerNames.length) namesEl.innerHTML = playerNames.map(function(n){ return "<div>✅ " + n + (n===myName?" (أنت)":"") + "</div>"; }).join("");
       else namesEl.innerHTML = "<div>✅ " + myName + " (أنت)</div>";
     }
     if(startBtn){
@@ -177,28 +162,61 @@
       }
     }
   }
-
-  function openGameScreen(){
-    gameStarted = true;
-    showOverlay("🎮 لعبة أونلاين - بدأت!",
-      '<p style="color:#ffc107;font-size:15px;font-weight:700;margin:0 0 6px">غرفة: ' + myCode + ' • ' + playerCount + ' / ' + maxPlayers + '</p>'
-      + '<div style="background:rgba(255,255,255,.08);border-radius:14px;padding:12px;margin:10px 0;text-align:right;line-height:2">'
-      + (playerNames && playerNames.length ? playerNames.map(function(n){ return "<div>✅ " + n + (n===myName ? " (أنت)" : "") + "</div>"; }).join("") : "<div>✅ " + myName + " (أنت)</div>")
-      + '</div>'
-      + '<p style="color:#b0c4de;font-size:13px;line-height:1.7;margin:8px 0">أنت الآن داخل اللعبة أونلاين.<br>طاولة البطاقات الأصلية ستظهر هنا في المرحلة القادمة بدون تغيير مبدأ لعبتك.</p>'
-      + '<button id="bc-leave-game" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:10px 0 0">🚪 مغادرة الغرفة</button>'
+  // ===== الطاولة الحقيقية داخل الغرفة =====
+  function renderGame(isOver){
+    if(!game) return;
+    let names = game.names || playerNames;
+    let scores = game.scores || [];
+    let cards = game.cards || [];
+    let opened = cards.filter(function(c){return c.opened;}).length;
+    let myTurn = (game.current === myIndex);
+    let playersHTML = names.map(function(n,i){
+      let isCur = (i===game.current);
+      let isMe = (i===myIndex);
+      return '<div style="flex:1;min-width:0;padding:8px 4px;border-radius:12px;background:'+(isCur?"rgba(0,230,118,.18)":"rgba(255,255,255,.08)")+';border:2px solid '+(isCur?"#00e676":"rgba(255,255,255,.15)")+'">'
+        + '<div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(isCur?"⭐ ":"")+n+(isMe?" (أنت)":"")+'</div>'
+        + '<div style="font-size:16px;font-weight:900;color:#ffdf6e">'+(scores[i]||0)+' نقطة</div></div>';
+    }).join("");
+    let cardsHTML = cards.map(function(c,i){
+      if(c.opened){
+        let bg = c.type==="points" ? ((c.value||0)>0 ? "linear-gradient(135deg,#c8e6c9,#a5d6a7)" : "linear-gradient(135deg,#ffcdd2,#ef9a9a)") : "linear-gradient(135deg,#fff3e0,#ffcc80)";
+        return '<div style="aspect-ratio:0.72;border-radius:8px;background:'+bg+';color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:16px;font-weight:900;border:2px solid #fff;padding:2px"><span>'+(c.icon||"⭐")+'</span><span style="font-size:9px;line-height:1.1">'+(c.type==="points" ? ((c.value>0?"+":"")+c.value) : (c.label||""))+'</span></div>';
+      }
+      return '<button data-card="'+i+'" class="bc-card-btn" style="aspect-ratio:0.72;border-radius:8px;background:linear-gradient(135deg,#263f59,#3a5a7c);border:2px solid #5a7d9c;color:#fff;font-size:20px;cursor:'+(myTurn?"pointer":"not-allowed")+';opacity:'+(myTurn?"1":"0.7")+'">🃏</button>';
+    }).join("");
+    showOverlay(isOver ? "🏆 انتهت الجولة" : "🎮 لعبة أونلاين - غرفة " + myCode,
+      '<div style="display:flex;gap:6px;margin:8px 0">'+playersHTML+'</div>'
+      + '<div style="font-size:13px;font-weight:800;margin:6px 0">'+(game.winner ? ("🏆 الفائز: "+game.winner) : (myTurn ? "⭐ دورك - اكشف بطاقة واحدة" : "⏳ دور: "+(names[game.current]||""))) + '</div>'
+      + '<div style="font-size:12px;color:#b0c4de;min-height:20px">'+(game.lastMsg||"")+'</div>'
+      + '<div style="font-size:12px;color:#ffc107;margin:4px 0">تم كشف '+opened+' / '+cards.length+' • '+(game.direction===1?"➡️":"⬅️")+' المستوى '+game.level+'</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:10px 0">'+cardsHTML+'</div>'
+      + '<button id="bc-leave-game" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:6px 0 0">🚪 مغادرة الغرفة</button>'
+      + (isOver ? '<button id="bc-back-menu" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#455a64;color:#fff;margin:6px 0 0">🏠 القائمة</button>' : '')
     );
-    document.getElementById("bc-leave-game").onclick = function(){
-      gameStarted = false;
+    document.querySelectorAll(".bc-card-btn").forEach(function(b){
+      b.onclick = function(){
+        if(!myTurn){ toast("⏳ مش دورك"); return; }
+        let idx = parseInt(b.getAttribute("data-card"),10);
+        sendSafe({ type:"play_card", code: myCode, index: idx });
+      };
+    });
+    let leaveBtn = document.getElementById("bc-leave-game");
+    if(leaveBtn) leaveBtn.onclick = function(){
+      gameStarted = false; game = null;
       sendSafe({ type:"leave", code: myCode });
-      myCode = ""; playerCount = 1; playerNames = [myName];
+      myCode = ""; playerCount = 1; playerNames = [myName]; myIndex = -1;
       toast("👋 غادرت الغرفة");
       openMenu();
     };
+    let backBtn = document.getElementById("bc-back-menu");
+    if(backBtn) backBtn.onclick = function(){
+      gameStarted = false; game = null;
+      sendSafe({ type:"leave", code: myCode });
+      myCode = ""; openMenu();
+    };
   }
-
   function openMenu(){
-    gameStarted = false;
+    gameStarted = false; game = null;
     showOverlay("🌐 العب أونلاين",
       '<p style="color:#b0c4de;font-size:14px;margin:0 0 10px">اختر عدد اللاعبين أولًا، بعدها اختر طريقة اللعب.</p>'
       + '<label style="display:block;text-align:right;font-size:13px;color:#b0c4de;margin-bottom:4px">اسمك<br><input id="bc-name" value="'+myName+'" placeholder="اكتب اسمك" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:15px;margin-top:5px"></label>'
@@ -210,7 +228,6 @@
     );
     bindCountSelector();
     document.getElementById("bc-name").addEventListener("input", function(e){ saveName(e.target.value); });
-    // رجوع للصفحة 1: نغلق شاشتنا ونغلق الـ Modal المحلي، بدون إخفاء الصفحة
     document.getElementById("bc-close").onclick = function(){
       closeOverlay();
       setTimeout(closeReactModal, 100);
@@ -221,12 +238,11 @@
       toast("⏳ جاري إنشاء غرفة لـ " + maxPlayers + " لاعبين...");
       connect().then(function(){
         sendSafe({ type:"create", name: myName, maxPlayers: maxPlayers });
-        myCode = ""; playerCount = 1; playerNames = [myName];
+        myCode = ""; playerCount = 1; playerNames = [myName]; myIndex = 0;
         setTimeout(openWaiting, 400);
       }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
     };
   }
-
   function openSearch(){
     showOverlay("🔍 جاري البحث عن لاعبين...",
       '<div style="font-size:50px;margin:10px 0">🔍</div>'
@@ -237,7 +253,6 @@
     connect().then(function(){ sendSafe({ type:"quick_play", name: myName, maxPlayers: maxPlayers }); }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
     document.getElementById("bc-cancel-search").onclick = function(){ sendSafe({ type:"cancel_search" }); openMenu(); };
   }
-
   function openJoin(){
     showOverlay("🔑 دخول لغرفة",
       '<p style="color:#b0c4de;font-size:14px;margin:0 0 16px">أدخل رقم الغرفة المكوّن من 6 أرقام</p>'
@@ -263,7 +278,6 @@
       }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
     };
   }
-
   function openWaiting(){
     showOverlay("غرفتك جاهزة",
       '<p style="color:#b0c4de;font-size:14px;margin:0 0 8px">أرسل الرقم لأصدقائك</p>'
@@ -278,10 +292,8 @@
     document.getElementById("bc-start-btn").onclick = function(){
       if(playerCount < maxPlayers){ toast("مازال ناقص " + (maxPlayers - playerCount) + " لاعب"); return; }
       sendSafe({ type:"start", code: myCode });
-      openGameScreen();
     };
   }
-
   function handleOpen(e){
     let btn = e.target && e.target.closest ? e.target.closest("button") : null;
     if(!btn) return;
@@ -292,5 +304,5 @@
     }
   }
   document.addEventListener("click", handleOpen, false);
-  console.log("✅ Battle Online V13.1 - back to page 1 fixed");
+  console.log("✅ Battle Online V14 FINAL - shared board");
 })();
