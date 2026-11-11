@@ -1,4 +1,4 @@
-// battle-online-v6.js - V13 - المغادرة ترجع لقائمة أونلاين، ليس للمعاينة المحلية
+// battle-online-v6.js - V13.1 - كامل - إصلاح الرجوع للصفحة 1 + المغادرة + بدون تغيير مبدأ اللعبة
 (function(){
   "use strict";
   const WS_URL = "wss://battle-cards-online-v2.onrender.com";
@@ -35,23 +35,29 @@
     if(o) o.remove();
   }
 
-  // نغلق الـ Modal المحلي تاع React بالضغط على زر رجوع تاعه، حتى لا يبقى ظاهر
+  // V13.1 - إصلاح الرجوع للصفحة 1: لا نخفي أي شيء بـ display:none
+  // نضغط فقط على زر رجوع تاع الـ Modal المحلي، ونعيد إظهار الصفحة 1 إذا كانت مخفية بالخطأ
   function closeReactModal(){
     try{
-      let btns = Array.from(document.querySelectorAll("button"));
-      let back = btns.find(function(b){
+      let allBtns = Array.from(document.querySelectorAll("button"));
+      let backs = allBtns.filter(function(b){
         let t = (b.textContent||"").trim();
-        return t.indexOf("رجوع") !== -1 && t.length < 20;
+        return t.indexOf("رجوع") !== -1 && b.offsetParent !== null;
       });
-      // نضغط رجوع فقط إذا كان الـ Modal المحلي مفتوح، وليس شاشتنا
-      if(back && !document.getElementById("bc-online-overlay")) back.click();
-      // ونخفي أي عنصر فيه "معاينة محلية" - العنصر الصغير فقط
+      if(backs.length > 0){
+        backs[backs.length - 1].click();
+      }
+      // نعيد إظهار الصفحة 1 إذا كانت مخفية من نسخة قديمة
       document.querySelectorAll("div").forEach(function(el){
-        let tx = el.textContent || "";
-        if(tx.indexOf("معاينة محلية") !== -1 && tx.length < 800){
-          if(el.style) el.style.display = "none";
+        if(el.style && el.style.display === "none"){
+          let tx = el.textContent || "";
+          if(tx.indexOf("العب ضد الحاسوب") !== -1 || tx.indexOf("كيف تلعب") !== -1 || tx.indexOf("العب أونلاين") !== -1){
+            el.style.display = "";
+          }
         }
       });
+      // نتأكد أن body ظاهر
+      if(document.body && document.body.style) document.body.style.display = "";
     }catch(e){}
   }
 
@@ -129,7 +135,11 @@
             toast("❌ " + (d.message || "الغرفة غير موجودة"));
             setTimeout(openJoin, 800);
           }
-          if(type === "game_started"){ gameStarted = true; toast("▶️ بدأت اللعبة!"); openGameScreen(); }
+          if(type === "game_started"){
+            gameStarted = true;
+            toast("▶️ بدأت اللعبة!");
+            openGameScreen();
+          }
           if(type === "player_left"){
             playerCount = Math.max(1, playerCount - 1);
             if(!gameStarted) updateWaiting();
@@ -175,16 +185,15 @@
       + '<div style="background:rgba(255,255,255,.08);border-radius:14px;padding:12px;margin:10px 0;text-align:right;line-height:2">'
       + (playerNames && playerNames.length ? playerNames.map(function(n){ return "<div>✅ " + n + (n===myName ? " (أنت)" : "") + "</div>"; }).join("") : "<div>✅ " + myName + " (أنت)</div>")
       + '</div>'
-      + '<p style="color:#b0c4de;font-size:13px;line-height:1.7;margin:8px 0">أنت الآن داخل اللعبة أونلاين.</p>'
+      + '<p style="color:#b0c4de;font-size:13px;line-height:1.7;margin:8px 0">أنت الآن داخل اللعبة أونلاين.<br>طاولة البطاقات الأصلية ستظهر هنا في المرحلة القادمة بدون تغيير مبدأ لعبتك.</p>'
       + '<button id="bc-leave-game" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:10px 0 0">🚪 مغادرة الغرفة</button>'
     );
-    // إصلاح V13: المغادرة ترجع لقائمة أونلاين تاعنا، وليس closeOverlay
     document.getElementById("bc-leave-game").onclick = function(){
       gameStarted = false;
       sendSafe({ type:"leave", code: myCode });
       myCode = ""; playerCount = 1; playerNames = [myName];
       toast("👋 غادرت الغرفة");
-      openMenu(); // نرجع لقائمة أونلاين
+      openMenu();
     };
   }
 
@@ -201,7 +210,7 @@
     );
     bindCountSelector();
     document.getElementById("bc-name").addEventListener("input", function(e){ saveName(e.target.value); });
-    // رجوع للصفحة الأولى: نغلق شاشتنا ونغلق الـ Modal المحلي معها
+    // رجوع للصفحة 1: نغلق شاشتنا ونغلق الـ Modal المحلي، بدون إخفاء الصفحة
     document.getElementById("bc-close").onclick = function(){
       closeOverlay();
       setTimeout(closeReactModal, 100);
@@ -265,7 +274,6 @@
       + '<button id="bc-cancel" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:5px 0">إلغاء</button>'
     );
     updateWaiting();
-    // إلغاء أيضا يرجع لقائمة أونلاين، ليس للمعاينة
     document.getElementById("bc-cancel").onclick = function(){ sendSafe({ type:"leave", code: myCode }); openMenu(); };
     document.getElementById("bc-start-btn").onclick = function(){
       if(playerCount < maxPlayers){ toast("مازال ناقص " + (maxPlayers - playerCount) + " لاعب"); return; }
@@ -284,5 +292,5 @@
     }
   }
   document.addEventListener("click", handleOpen, false);
-  console.log("✅ Battle Online V13 - leave goes to menu");
+  console.log("✅ Battle Online V13.1 - back to page 1 fixed");
 })();
