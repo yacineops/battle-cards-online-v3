@@ -3,8 +3,11 @@
 (function(){
   "use strict";
   const WS_URL = "wss://battle-cards-online-v2.onrender.com";
-  let ws=null, myCode="", myName="";
+  let ws=null, myCode="", myName="", myFlag="🇩🇿";
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
+  try{ myFlag = localStorage.getItem("bc_player_flag")||"🇩🇿"; }catch(e){}
+  function saveFlag(f){ myFlag=f; try{localStorage.setItem("bc_player_flag",f);}catch(e){} }
+  function findMyIndex(names){ if(!names) return -1; for(let i=0;i<names.length;i++){ let n=names[i]||""; if(n===myName || n===myFlag+" "+myName || n.endsWith(" "+myName)) return i; } return -1; }
   if(!myName) myName="اللاعب 1";
   let _rejoinData=null; try{ _rejoinData=JSON.parse(sessionStorage.getItem("bc_rejoin")||"null"); if(_rejoinData) sessionStorage.removeItem("bc_rejoin"); }catch(e){}
 let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false, _timerTotal=20;
@@ -50,8 +53,8 @@ let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=fal
         resolve(ws);
         // إذا كنا راجعين من انقطاع، نرجع لنفس الغرفة تلقائيا
         if(_rejoinData && _rejoinData.code){
-          myCode=String(_rejoinData.code); myName=_rejoinData.name||myName; maxPlayers=_rejoinData.maxPlayers||maxPlayers;
-          try{ ws.send(JSON.stringify({type:"rejoin", code:myCode, name:myName})); toast("🔄 جاري الرجوع للجولة..."); }catch(e){}
+          myCode=String(_rejoinData.code); myName=_rejoinData.name||myName; myFlag=_rejoinData.flag||myFlag; maxPlayers=_rejoinData.maxPlayers||maxPlayers;
+          try{ ws.send(JSON.stringify({type:"rejoin", code:myCode, name:myName, flag:myFlag})); toast("🔄 جاري الرجوع للجولة..."); }catch(e){}
           _rejoinData=null;
         }
       };
@@ -62,7 +65,7 @@ ws.onclose=()=>{
   if(_reconnectTries>=3){ toast("⚠️ انقطع الاتصال بالسيرفر - أعد تحميل الصفحة"); return; }
   _reconnectTries++;
   toast("🔄 إعادة الاتصال... ("+_reconnectTries+")");
-  setTimeout(()=>{ try{ sessionStorage.setItem("bc_rejoin", JSON.stringify({code:myCode, name:myName, maxPlayers:maxPlayers})); }catch(e){} location.reload(); }, 1500);
+  setTimeout(()=>{ try{ sessionStorage.setItem("bc_rejoin", JSON.stringify({code:myCode, name:myName, flag:myFlag, maxPlayers:maxPlayers})); }catch(e){} location.reload(); }, 1500);
 };
       ws.onmessage=(ev)=>{
         try{
@@ -76,14 +79,14 @@ ws.onclose=()=>{
             if(typeof d.players==="number") playerCount=d.players;
             if(typeof d.count==="number") playerCount=d.count;
             clearTimeout(joinTimer);
-            if(playerNames) myIndex=playerNames.indexOf(myName);
+            if(playerNames) myIndex=findMyIndex(playerNames);
             if(type==="match_found"){ toast("🎉 اكتمل العدد! "+playerCount+" / "+maxPlayers); openWaiting(); }
             else if(!gameStarted) updateWaiting();
             if(playerCount>=maxPlayers && !gameStarted) toast("🎉 اكتمل العدد! "+playerCount+" / "+maxPlayers);
           }
           if(type==="error"){ clearTimeout(joinTimer); toast("❌ "+(d.message||"الغرفة غير موجودة")); if(!gameStarted) setTimeout(openJoin,800); }
           if(type==="rejoined"){ if(d.code) myCode=String(d.code); gameStarted=true; toast("✅ رجعت للجولة"); }
-          if(type==="game_started"||type==="card_revealed"||type==="game_state"){ gameStarted=true; if(d.game) game=d.game; if(playerNames) myIndex=playerNames.indexOf(myName); renderGame(); playSoundForLastCard(); }
+          if(type==="game_started"||type==="card_revealed"||type==="game_state"){ gameStarted=true; if(d.game) game=d.game; if(playerNames) myIndex=findMyIndex(playerNames); renderGame(); playSoundForLastCard(); }
           if(type==="game_over"){ if(d.game) game=d.game; if(d.reason==="alone"){ game._aloneWinner=true; } renderGame(true); }
           if(type==="player_left"){ playerCount=Math.max(1,playerCount-1); if(!gameStarted) updateWaiting(); else if(game) renderGame(); }
         }catch(e){}
@@ -95,7 +98,7 @@ ws.onclose=()=>{
     let codeEl=document.getElementById("bc-code"), countEl=document.getElementById("bc-count"), namesEl=document.getElementById("bc-names"), startBtn=document.getElementById("bc-start-btn");
     if(codeEl) codeEl.textContent=myCode||"••••••";
     if(countEl) countEl.textContent="👥 اللاعبون: "+playerCount+" / "+maxPlayers;
-    if(namesEl){ namesEl.innerHTML=(playerNames&&playerNames.length?playerNames:[myName]).map(n=>"<div>✅ "+n+(n===myName?" (أنت)":"")+"</div>").join(""); }
+    if(namesEl){ namesEl.innerHTML=(playerNames&&playerNames.length?playerNames:[myFlag+" "+myName]).map((n,ii)=>"<div>✅ "+n+(ii===myIndex?" (أنت)":"")+"</div>").join(""); }
     if(startBtn){ if(playerCount>=maxPlayers){ startBtn.disabled=false; startBtn.style.opacity="1"; startBtn.textContent="▶️ ابدأ اللعب ("+playerCount+" / "+maxPlayers+")"; } else { startBtn.disabled=true; startBtn.style.opacity="0.5"; startBtn.textContent="⏳ نستنى "+(maxPlayers-playerCount)+" لاعب... ("+playerCount+" / "+maxPlayers+")"; } }
   }
   // ---- صوت الأصلي: نستعمل نفس ترددات اللعبة الأصلية ----
@@ -335,7 +338,8 @@ ws.onclose=()=>{
     // 1) ألوان: صاحب الدور أخضر، المستهدفين أحمر
     root.querySelectorAll("[data-player-idx]").forEach(el=>{
       let pi=parseInt(el.getAttribute("data-player-idx"),10);
-      if(pi===game.current && !game.winner){ el.style.outline="4px solid #00e676"; el.style.boxShadow="0 0 0 4px rgba(0,230,118,.25), 0 0 18px rgba(0,230,118,.6)"; }
+      if(game.pending && game.pending.kind==="exchangePlayers" && game.pending.first===pi){ el.style.outline="4px solid #ff9800"; el.style.boxShadow="0 0 0 4px rgba(255,152,0,.3), 0 0 18px rgba(255,152,0,.6)"; }
+      else if(pi===game.current && !game.winner){ el.style.outline="4px solid #00e676"; el.style.boxShadow="0 0 0 4px rgba(0,230,118,.25), 0 0 18px rgba(0,230,118,.6)"; }
       else { el.style.boxShadow="none"; if(!(pend && pend.actor===myIndex)) el.style.outline="none"; }
     });
     if(pend && pend.actor===myIndex && ["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
@@ -343,7 +347,7 @@ ws.onclose=()=>{
         let pi=parseInt(el.getAttribute("data-player-idx"),10);
         if(pi===pend.actor) { el.style.outline="4px solid #00e676"; return; }
         el.style.cursor="pointer"; el.style.outline="4px solid #ff5252"; el.style.boxShadow="0 0 18px rgba(255,82,82,.7)";
-        el.onclick=()=>{ if(Date.now()<_pendingDelayUntil){ toast("⏳ اقرا البطاقة أولا..."); return; } let t=parseInt(el.getAttribute("data-player-idx"),10); if(t===myIndex && pend.kind!=="exchangePlayers"){ toast("اختر لاعب آخر"); return; } sendSafe({type:"choose_target",code:myCode,target:t}); };
+        el.onclick=()=>{ if(Date.now()<_pendingDelayUntil){ toast("⏳ اقرا البطاقة أولا..."); return; } let t=parseInt(el.getAttribute("data-player-idx"),10); if(t===myIndex && pend.kind!=="exchangePlayers"){ toast("اختر لاعب آخر"); return; } if(pend.kind==="exchangePlayers" && pend.first!=null && t===pend.first){ toast("اختر لاعب مختلف عن الأول"); return; } sendSafe({type:"choose_target",code:myCode,target:t}); };
       });
     }
     // 3) الوقت كيما في العادي: ثابت في أعلى الشاشة باش يبان ديما حتى لو ضاق الـ header
@@ -401,7 +405,15 @@ ws.onclose=()=>{
         if(pend.kind==="replay") pendEl.textContent="♻️ اضغط على بطاقة مكشوفة لإعادة تفعيلها";
         else if(pend.kind==="double") pendEl.textContent="🃏 اضغط على بطاقتين مغلقتين (اخترت "+_doublePicks.length+" / 2)";
         else if(pend.kind==="double_choose") pendEl.textContent="🃏 اختر واحدة من البطاقتين";
-        else if(["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)) pendEl.textContent="🎯 اضغط على اللاعب المستهدف";
+        else if(pend.kind==="exchangePlayers"){
+          if(pend.first==null) pendEl.textContent="🔃 اختر اللاعب الأول للتبادل";
+          else {
+            // مع لاعبين فقط، الثاني هو انت
+            if((game.names||[]).length===2 && pend.first!==myIndex) pendEl.textContent="🔃 الأول هو "+(game.names[pend.first]||"")+" - اضغط عليك انت للتبادل معه";
+            else pendEl.textContent="🔃 الأول هو "+(game.names[pend.first]||"")+" - اختر اللاعب الثاني";
+          }
+        }
+        else if(["steal","bomb","doubleTarget","resetPlayer","exchange","freeze"].includes(pend.kind)) pendEl.textContent="🎯 اضغط على اللاعب المستهدف";
         else pendEl.textContent=game.lastMsg||"";
       } else if(pend) pendEl.textContent="⏳ نستنى "+(game.names[pend.actor]||"")+" يكمل الاختيار...";
       else pendEl.textContent=game.lastMsg||"";
@@ -416,6 +428,7 @@ ws.onclose=()=>{
     showOverlay("🌐 العب أونلاين",
       '<p style="color:#b0c4de;font-size:14px;margin:0 0 10px">اختر عدد اللاعبين أولًا، بعدها اختر طريقة اللعب.</p>'
       + '<label style="display:block;text-align:right;font-size:13px;color:#b0c4de;margin-bottom:4px">اسمك<br><input id="bc-name" value="'+myName+'" placeholder="اكتب اسمك" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:15px;margin-top:5px"></label>'
+      + '<div style="margin:8px 0 12px"><div style="font-size:13px;color:#b0c4de;text-align:right;margin-bottom:6px">🏳️ علمك</div><div id="bc-flags" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-height:120px;overflow-y:auto;padding:6px;background:rgba(255,255,255,.06);border-radius:12px"></div></div>'
       + countSelector()
       + '<button id="bc-quick" style="'+btn("#ff8f00","#ffc107","#222")+'">🔍 بحث عن لاعبين - لعب سريع</button>'
       + '<button id="bc-create" style="'+btn("#1976d2","#2196f3","#fff")+'">➕ إنشاء غرفة</button>'
@@ -424,12 +437,13 @@ ws.onclose=()=>{
     );
     bindCountSelector();
     document.getElementById("bc-name").addEventListener("input",e=>saveName(e.target.value));
+    (function(){ let FLAGS=["🇩🇿","🇲🇦","🇹🇳","🇪🇬","🇱🇾","🇸🇦","🇦🇪","🇶🇦","🇰🇼","🇯🇴","🇱🇧","🇵🇸","🇮🇶","🇸🇾","🇾🇪","🇫🇷","🇪🇸","🇮🇹","🇩🇪","🇬🇧","🇵🇹","🇳🇱","🇧🇪","🇨🇭","🇹🇷","🇺🇸","🇨🇦","🇧🇷","🇦🇷","🇲🇽","🇷🇺","🇺🇦","🇵🇱","🇸🇪","🇳🇴","🇩🇰","🇯🇵","🇰🇷","🇨🇳","🇮🇳","🇦🇺","🇿🇦","🇳🇬","🇰🇪","🇸🇳","🇨🇲","🇬🇭","🌍","⭐"]; let box=document.getElementById("bc-flags"); if(!box) return; box.innerHTML=FLAGS.map(f=> '<button type="button" data-flag="'+f+'" style="font-size:22px;padding:6px 8px;border-radius:10px;border:2px solid '+(f===myFlag?'#ffc107':'transparent')+';background:'+(f===myFlag?'rgba(255,193,7,.2)':'rgba(255,255,255,.08)')+';cursor:pointer">'+f+'</button>').join(""); box.querySelectorAll("button[data-flag]").forEach(b=>{ b.onclick=()=>{ saveFlag(b.getAttribute("data-flag")); box.querySelectorAll("button[data-flag]").forEach(x=>{ x.style.border="2px solid transparent"; x.style.background="rgba(255,255,255,.08)"; }); b.style.border="2px solid #ffc107"; b.style.background="rgba(255,193,7,.2)"; }; }); })();
     document.getElementById("bc-close").onclick=()=>{ closeOverlay(); setTimeout(closeReactModal,100); };
     document.getElementById("bc-quick").onclick=openSearch;
     document.getElementById("bc-join-open").onclick=openJoin;
     document.getElementById("bc-create").onclick=()=>{
       toast("⏳ جاري إنشاء غرفة لـ "+maxPlayers+" لاعبين...");
-      connect().then(()=>{ sendSafe({type:"create",name:myName,maxPlayers:maxPlayers}); myCode=""; playerCount=1; playerNames=[myName]; myIndex=0; setTimeout(openWaiting,400); }).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
+      connect().then(()=>{ sendSafe({type:"create",name:myName,flag:myFlag,maxPlayers:maxPlayers}); myCode=""; playerCount=1; playerNames=[myName]; myIndex=0; setTimeout(openWaiting,400); }).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
     };
   }
   function openSearch(){
@@ -437,7 +451,7 @@ ws.onclose=()=>{
       '<div style="font-size:50px;margin:10px 0">🔍</div><p style="color:#b0c4de;font-size:14px;margin:0 0 10px">نبحث عن <b style="color:#ffc107">'+maxPlayers+' لاعبين</b>...</p>'
       + '<div style="font-size:13px;color:#ffc107;font-weight:700">⏳ البحث جاري... (1 / '+maxPlayers+')</div>'
       + '<button id="bc-cancel-search" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:14px 0 0">إلغاء البحث</button>');
-    connect().then(()=>sendSafe({type:"quick_play",name:myName,maxPlayers:maxPlayers})).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
+    connect().then(()=>sendSafe({type:"quick_play",name:myName,flag:myFlag,maxPlayers:maxPlayers})).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
     document.getElementById("bc-cancel-search").onclick=()=>{ sendSafe({type:"cancel_search"}); openMenu(); };
   }
   function openJoin(){
@@ -453,7 +467,7 @@ ws.onclose=()=>{
       let code=inp.value.trim(); if(code.length<4){ toast("أدخل رقم الغرفة بشكل صحيح"); return; }
       myCode=code; toast("⏳ جاري الدخول..."); clearTimeout(joinTimer);
       joinTimer=setTimeout(()=>toast("❌ لم يرد السيرفر - تأكد من الرقم وحاول مجددًا"),4000);
-      connect().then(()=>{ sendSafe({type:"join",code:code,roomCode:code,name:myName}); playerCount=1; setTimeout(openWaiting,400); }).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
+      connect().then(()=>{ sendSafe({type:"join",code:code,roomCode:code,name:myName,flag:myFlag}); playerCount=1; setTimeout(openWaiting,400); }).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
     };
   }
   function openWaiting(){
