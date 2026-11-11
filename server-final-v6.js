@@ -244,7 +244,7 @@ function applySimple(room, actorIdx, c, cbDone){
     g.lastMsg = v>0 ? (actor._name+" حصل على +"+v+" نقطة 🎉") : (actor._name+" خسر "+Math.abs(v)+" نقطة 😬");
     return cbDone(false);
   }
-  if(c.type==="doubleSelf"){ actor._score=(actor._score||0)*2; g.lastMsg="✖️2 تضاعف رصيد "+actor._name+" 🎉"; return cbDone(false); }
+  if(c.type==="doubleSelf"){ if((actor._score||0)>0){ actor._score=(actor._score||0)*2; g.lastMsg="✖️2 تضاعف رصيد "+actor._name+" 🎉"; } else { g.lastMsg="✖️2 رصيد "+actor._name+" سالب أو صفر، ما تضاعفش"; } return cbDone(false); }
   if(c.type==="reset"){
     // تأكيد في الأصل، هنا نطبق مباشرة بعد التأكيد من العميل
     room.players.forEach((p,i)=>{ if(i===actorIdx) return; let s=p._shields; if((s.goldenShield||0)>0) s.goldenShield--; else if((s.resetShield||0)>0) s.resetShield--; else p._score=0; });
@@ -255,17 +255,21 @@ function applySimple(room, actorIdx, c, cbDone){
     room.players.forEach((p,i)=>{ if(i===actorIdx) return; let s=p._shields; if((s.goldenShield||0)>0) s.goldenShield--; else if((s.stealShield||0)>0) s.stealShield--; else { let take=Math.max(0,p._score||0); total+=take; p._score=(p._score||0)-take; } });
     actor._score=(actor._score||0)+total; g.lastMsg="🧑‍🤝‍🧑 أخذت صافي "+total+" نقطة من أرصدة الخصوم"; return cbDone(false);
   }
-  if(c.type==="reverseBalances"){ room.players.forEach((p,i)=>{ if(i!==actorIdx) p._score=-(p._score||0); }); g.lastMsg="🔄 تم عكس أرصدة الخصوم"; return cbDone(false); }
+  if(c.type==="reverseBalances"){ room.players.forEach((p,i)=>{ if(i===actorIdx) return; if((p._shields.goldenShield||0)>0){ p._shields.goldenShield--; return; } if((p._score||0)>0) p._score=-(p._score||0); }); g.lastMsg="🔄 تم عكس أرصدة الخصوم (الموجبة فقط، الذهبي يحمي)"; return cbDone(false); }
   if(c.type==="bombAll"){
     room.players.forEach((p,i)=>{ if(i===actorIdx) return; let s=p._shields; if((s.goldenShield||0)>0) s.goldenShield--; else if((s.bombShield||0)>0) s.bombShield--; else p._score=(p._score||0)-5; });
     g.lastMsg="💣 تم خصم 5 نقاط من كل الخصوم غير المحميين"; return cbDone(false);
   }
   if(c.type==="randomPoints"){ let arr=[-10,-5,-2,1,3,5,7,10]; let v=arr[Math.floor(Math.random()*arr.length)]; actor._score=(actor._score||0)+v; g.lastMsg="🎲 "+actor._name+" "+(v>0?"حصل على +":"خسر ")+Math.abs(v)+" نقطة عشوائية"; return cbDone(false); }
   if(c.type==="randomBalances"){
-    let scores=room.players.map(p=>p._score||0);
+    // الدرع الذهبي يثبت رصيد صاحبو، نخلط غير الباقيين
+    let idxs=room.players.map((p,i)=>i).filter(i=> i!==actorIdx && !((room.players[i]._shields.goldenShield||0)>0));
+    // نستهلك الذهبي للمحميين
+    room.players.forEach((p,i)=>{ if(i!==actorIdx && (p._shields.goldenShield||0)>0) p._shields.goldenShield--; });
+    let scores=idxs.map(i=> room.players[i]._score||0);
     for(let i=scores.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [scores[i],scores[j]]=[scores[j],scores[i]]; }
-    room.players.forEach((p,i)=> p._score=scores[i]);
-    g.lastMsg="🎲 تم خلط أرصدة اللاعبين عشوائيًا"; return cbDone(false);
+    idxs.forEach((pi,k)=>{ room.players[pi]._score=scores[k]; });
+    g.lastMsg="🎲 تم خلط أرصدة اللاعبين (الذهبي يثبت رصيدو)"; return cbDone(false);
   }
   if(c.type==="reverse"){
     let nxt = nextPlayerIdx(room, actorIdx, 1);
@@ -284,14 +288,14 @@ function applySimple(room, actorIdx, c, cbDone){
 
     function handleCardEffect(room, actorIdx, c, isReplay){
       const g=room.game;
-      // بطاقات تحتاج هدف
-      const targetKinds={steal:"steal",bomb:"bomb",doubleTarget:"doubleTarget",resetPlayer:"resetPlayer",exchange:"exchange",freeze:"freeze",exchangePlayers:"exchangePlayers"};
+      // بطاقات تحتاج هدف - تبادل (مع لاعب / لاعبين) يروح لسؤال تأكيد أولا، لأنو ممكن ما يفيدكش
+      const targetKinds={steal:"steal",bomb:"bomb",doubleTarget:"doubleTarget",resetPlayer:"resetPlayer",freeze:"freeze"};
       if(targetKinds[c.type]){
         g.pending={kind:targetKinds[c.type],actor:actorIdx,cardId:c.id,amount:c.amount||0,first:null};
         g.lastMsg="🎯 اختر لاعبًا لتفعيل: "+(c.label||c.type);
         broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
       }
-      if(c.type==="shuffle"||c.type==="nextLevel"||c.type==="reset"||c.type==="stealAll"||c.type==="reverseBalances"||c.type==="bombAll"||c.type==="randomBalances"){
+      if(c.type==="exchange"||c.type==="exchangePlayers"||c.type==="shuffle"||c.type==="nextLevel"||c.type==="reset"||c.type==="stealAll"||c.type==="reverseBalances"||c.type==="bombAll"||c.type==="randomBalances"){
         g.pending={kind:"confirm",actor:actorIdx,cardId:c.id,confirmType:c.type};
         g.lastMsg="❓ هل تريد تفعيل: "+(c.label||c.type)+"؟";
         broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
@@ -299,14 +303,17 @@ function applySimple(room, actorIdx, c, cbDone){
       if(c.type==="replay"){
         let openedIdx=g.cards.map((x,i)=>i).filter(i=> g.cards[i].opened && g.cards[i].id!==c.id);
         if(openedIdx.length===0){ g.lastMsg="لا توجد بطاقة مكشوفة لإعادة تفعيلها"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
-        // إلغاء إعادة التفعيل؟
-        let nxt=nextPlayerIdx(room, actorIdx, 1);
-        if((room.players[nxt]._shields.cancelReplay||0)>0){ room.players[nxt]._shields.cancelReplay--; g.lastMsg="🚫 أُلغيت إعادة التفعيل"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
+        // إلغاء إعادة التفعيل؟ أي خصم عندو الدرع يقدر يلغي، ماشي غير اللي بعدك
+        let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelReplay||0)>0);
+        if(canceller!==-1){ room.players[canceller]._shields.cancelReplay--; g.lastMsg="🚫 أُلغيت إعادة التفعيل بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
         g.pending={kind:"replay",actor:actorIdx,cardId:c.id};
         g.lastMsg="♻️ اختر بطاقة مكشوفة لإعادة تفعيلها";
         broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
       }
       if(c.type==="doubleChoice"){
+        let closedCount=g.cards.filter(x=> !x.opened).length;
+        if(closedCount===1){ let onlyIdx=g.cards.findIndex(x=> !x.opened); let only=g.cards[onlyIdx]; only.opened=true; g.lastCard=only; g.lastMsg="🃏 بقات بطاقة واحدة برك - فعلناها"; handleCardEffect(room, actorIdx, only, false); return; }
+        if(closedCount===0){ g.lastMsg="🃏 ما بقاوش بطاقات مغلقة"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
         g.pending={kind:"double",actor:actorIdx,cardId:c.id};
         g.lastMsg="🃏 اكشف بطاقتين مغلقتين ثم اختر واحدة لتفعيلها";
         broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
@@ -332,8 +339,10 @@ function botTakeTurn(room){
     let pend=g.pending;
     if(["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
       // اختر هدف عشوائي (ما عدا نفسه إلا في تبادل لاعبين)
+      // تبادل لاعبين: تقدر تختار نفسك كذلك - مع لاعبين فقط، الثاني هو انت
+      // باقي البطاقات: ما تقدرش تختار نفسك
       let candidates=room.players.map((_,i)=>i).filter(i=> i!==actorIdx || pend.kind==="exchangePlayers");
-      if(pend.kind==="exchangePlayers" && pend.first!=null) candidates=candidates.filter(i=> i!==pend.first && i!==actorIdx);
+      if(pend.kind==="exchangePlayers" && pend.first!=null) candidates=candidates.filter(i=> i!==pend.first);
       if(candidates.length===0){ g.pending=null; finishTurn(room); return; }
       let t=candidates[Math.floor(Math.random()*candidates.length)];
       // نستدعي نفس منطق choose_target عبر دالة مساعدة: نحاكي الرسالة
@@ -341,7 +350,18 @@ function botTakeTurn(room){
       return;
     }
     if(pend.kind==="confirm"){
-      let yes=Math.random()<0.75; // البوت يقبل غالبا
+      let yes=Math.random()<0.75;
+      // التبادل: البوت يخمم - إذا رصيدو صغير و رصيد الخصم كبير، التبادل يفيدو فيقبل. إذا رصيدو كبير، يرفض
+      if(pend.confirmType==="exchange"){
+        let myScore=room.players[actorIdx]._score||0;
+        let maxOther=Math.max(...room.players.map((pp,ii)=> ii===actorIdx?-9999:(pp._score||0)));
+        yes = myScore < maxOther ? (Math.random()<0.85) : (Math.random()<0.15);
+      } else if(pend.confirmType==="exchangePlayers"){
+        // تبادل لاعبين: إذا الفرق بين أكبر و أصغر رصيد كبير، التبادل يخلط المتصدر فيقبل
+        let scores=room.players.map(pp=> pp._score||0);
+        let diff=Math.max(...scores)-Math.min(...scores);
+        yes = diff>5 ? (Math.random()<0.8) : (Math.random()<0.4);
+      }
       handleBotConfirm(room, actorIdx, pend, yes);
       return;
     }
@@ -355,6 +375,8 @@ function botTakeTurn(room){
     }
     if(pend.kind==="double"){
       let closed=g.cards.map((x,i)=>i).filter(i=> !g.cards[i].opened);
+      if(closed.length===0){ g.pending=null; finishTurn(room); return; }
+      if(closed.length===1){ let only=g.cards[closed[0]]; only.opened=true; g.pending=null; g.lastCard=only; g.lastMsg="🃏 بقات بطاقة واحدة برك - فعلناها"; handleCardEffect(room, actorIdx, only, false); return; }
       if(closed.length<2){ g.pending=null; finishTurn(room); return; }
       // اختر 2 عشوائيا
       for(let i=closed.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [closed[i],closed[j]]=[closed[j],closed[i]]; }
@@ -387,29 +409,29 @@ function handleBotTarget(room, actorIdx, pend, targetIdx){
   const g=room.game; let actor=room.players[actorIdx], target=room.players[targetIdx];
   let ts=target._shields;
   g.pending=null; clearTimer(room);
-  if((ts.goldenShield||0)>0 && ["steal","bomb","doubleTarget","resetPlayer","exchange"].includes(pend.kind)){
+  if((ts.goldenShield||0)>0 && ["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
     ts.goldenShield--; g.lastMsg="🏆 الدرع الذهبي منع التأثير على "+target._name;
     broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return;
   }
   if(pend.kind==="steal"){
     let amt=pend.amount||3;
     if((ts.stealShield||0)>0){ ts.stealShield--; g.lastMsg="🛡️ الدرع منع السرقة"; }
-    else if((ts.reflect||0)>0){ let take=Math.min(amt,Math.max(0,target._score||0)); ts.reflect--; target._score-=take; actor._score+=take; g.lastMsg="🪞 انعكست السرقة"; }
+    else if((ts.reflect||0)>0){ let take=Math.min(amt,Math.max(0,actor._score||0)); ts.reflect--; actor._score-=take; target._score+=take; g.lastMsg="🪞 انعكست السرقة - المهاجم خسر "+take; }
     else { let take=Math.min(amt,Math.max(0,target._score||0)); target._score-=take; actor._score+=take; g.lastMsg="💰 "+actor._name+" سرق "+take+" من "+target._name; }
   } else if(pend.kind==="bomb"){
     let amt=pend.amount||3;
     if((ts.bombShield||0)>0){ ts.bombShield--; g.lastMsg="🧨 درع القنبلة حمى "+target._name; }
     else { target._score-=amt; g.lastMsg="💣 "+actor._name+" فجر "+target._name+" -"+amt; }
   } else if(pend.kind==="doubleTarget"){
-    if((ts.reflect||0)>0){ ts.reflect--; actor._score*=2; g.lastMsg="🪞 انعكست المضاعفة"; }
-    else { target._score*=2; g.lastMsg="🎯 تضاعف رصيد "+target._name; }
+    if((ts.reflect||0)>0){ ts.reflect--; if((actor._score||0)>0) actor._score*=2; g.lastMsg="🪞 انعكست المضاعفة"; }
+    else { if((target._score||0)>0){ target._score*=2; g.lastMsg="🎯 تضاعف رصيد "+target._name; } else { g.lastMsg="🎯 رصيد "+target._name+" سالب أو صفر، ما تضاعفش"; } }
   } else if(pend.kind==="resetPlayer"){
     if((ts.resetShield||0)>0){ ts.resetShield--; g.lastMsg="🔐 درع التصفير حمى "+target._name; }
     else { target._score=0; g.lastMsg="💥 تم تصفير "+target._name; }
   } else if(pend.kind==="exchange"){ let tmp=actor._score; actor._score=target._score; target._score=tmp; g.lastMsg="🔃 تم تبادل الرصيدين"; }
   else if(pend.kind==="freeze"){ target._shields.freeze=2; g.lastMsg="🧊 تم تجميد "+target._name; }
   else if(pend.kind==="exchangePlayers"){
-    if(pend.first==null){ g.pending={kind:"exchangePlayers",actor:actorIdx,first:targetIdx,cardId:pend.cardId}; g.lastMsg="اختر اللاعب الثاني"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return; }
+    if(pend.first==null){ g.pending={kind:"exchangePlayers",actor:actorIdx,first:targetIdx,cardId:pend.cardId}; g.lastMsg="اختر اللاعب الثاني للتبادل - الأول هو "+room.players[targetIdx]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return; }
     else { let first=room.players[pend.first]; if(targetIdx===pend.first){ g.pending=pend; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return; } let tmp=first._score; first._score=target._score; target._score=tmp; g.lastMsg="تم تبادل رصيد "+first._name+" و "+target._name; }
   }
   broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room);
@@ -418,17 +440,23 @@ function handleBotConfirm(room, actorIdx, pend, yes){
   const g=room.game; g.pending=null; clearTimer(room);
   if(!yes){ g.lastMsg="تم إلغاء التفعيل"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
   if(pend.confirmType==="shuffle"){
-    let nxt=nextPlayerIdx(room, actorIdx, 1);
-    if((room.players[nxt]._shields.cancelShuffle||0)>0){ room.players[nxt]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء القلب"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
+    let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelShuffle||0)>0);
+    if(canceller!==-1){ room.players[canceller]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء القلب بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
     g.cards.forEach(x=> x.opened=false);
     for(let i=g.cards.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [g.cards[i],g.cards[j]]=[g.cards[j],g.cards[i]]; }
     g.lastMsg="🔄 تم قلب كل البطاقات وخلطها!";
   } else if(pend.confirmType==="nextLevel"){
+    let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelShuffle||0)>0);
+    if(canceller!==-1){ room.players[canceller]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء الانتقال بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
     if(g.level>=3){ g.lastMsg="أنت في آخر مستوى!"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
     g.level++; g.cards=buildDeck(g.level); room.players.forEach(p=> p._shields=newShields());
     g.lastMsg="🎉 انتقلتم إلى المستوى "+g.level+"!";
   } else if(["reset","stealAll","reverseBalances","bombAll","randomBalances"].includes(pend.confirmType)){
     applySimple(room, actorIdx, {type:pend.confirmType}, ()=>{});
+  } else if(pend.confirmType==="exchange"||pend.confirmType==="exchangePlayers"){
+    g.pending={kind:pend.confirmType,actor:actorIdx,cardId:pend.cardId,amount:0,first:null};
+    g.lastMsg="🎯 اختر لاعبًا لتفعيل التبادل";
+    broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
   }
   broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room);
 }
@@ -537,27 +565,28 @@ wss.on("connection", (ws)=>{
       const g=room.game; if(!g.pending) return;
       const actorIdx=room.players.indexOf(ws); if(actorIdx!==g.pending.actor) return;
       let targetIdx=parseInt(d.target,10); if(isNaN(targetIdx)||targetIdx<0||targetIdx>=room.players.length) return;
+      // تبادل لاعبين: تقدر تختار نفسك، لأنو مع لاعبين فقط يبقى غير انت كثاني واحد. باقي البطاقات ما تقدرش تختار نفسك
       if(targetIdx===actorIdx && g.pending.kind!=="exchangePlayers") { send(ws,{type:"error",message:"اختر لاعب آخر"}); return; }
       let pend=g.pending; g.pending=null; clearTimer(room);
       let actor=room.players[actorIdx], target=room.players[targetIdx];
       let ts=target._shields;
       // الدرع الذهبي يمنع كلش
-      if((ts.goldenShield||0)>0 && ["steal","bomb","doubleTarget","resetPlayer","exchange"].includes(pend.kind)){
+      if((ts.goldenShield||0)>0 && ["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
         ts.goldenShield--; g.lastMsg="🏆 الدرع الذهبي منع التأثير على "+target._name;
         broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return;
       }
       if(pend.kind==="steal"){
         let amt=pend.amount||3;
         if((ts.stealShield||0)>0){ ts.stealShield--; g.lastMsg="🛡️ الدرع منع السرقة"; }
-        else if((ts.reflect||0)>0){ let take=Math.min(amt,Math.max(0,target._score||0)); ts.reflect--; target._score-=take; actor._score+=take; g.lastMsg="🪞 انعكست السرقة على المهاجم"; }
+        else if((ts.reflect||0)>0){ let take=Math.min(amt,Math.max(0,actor._score||0)); ts.reflect--; actor._score-=take; target._score+=take; g.lastMsg="🪞 انعكست السرقة - انت خسرت "+take; }
         else { let take=Math.min(amt,Math.max(0,target._score||0)); target._score-=take; actor._score+=take; g.lastMsg=take>0?("💰 سرقت "+take+" نقطة من "+target._name):("💰 رصيد "+target._name+" صفر"); }
       } else if(pend.kind==="bomb"){
         let amt=pend.amount||3;
         if((ts.bombShield||0)>0){ ts.bombShield--; g.lastMsg="🧨 درع القنبلة حمى "+target._name; }
         else { target._score-=amt; g.lastMsg="💣 خسر "+target._name+" "+amt+" نقاط"; }
       } else if(pend.kind==="doubleTarget"){
-        if((ts.reflect||0)>0){ ts.reflect--; actor._score*=2; g.lastMsg="🪞 انعكست المضاعفة على المهاجم"; }
-        else { target._score*=2; g.lastMsg="🎯 تضاعف رصيد "+target._name; }
+        if((ts.reflect||0)>0){ ts.reflect--; if((actor._score||0)>0) actor._score*=2; g.lastMsg="🪞 انعكست المضاعفة على المهاجم"; }
+        else { if((target._score||0)>0){ target._score*=2; g.lastMsg="🎯 تضاعف رصيد "+target._name; } else { g.lastMsg="🎯 رصيد "+target._name+" سالب أو صفر، ما تضاعفش"; } }
       } else if(pend.kind==="resetPlayer"){
         if((ts.resetShield||0)>0){ ts.resetShield--; g.lastMsg="🔐 درع التصفير حمى "+target._name; }
         else { target._score=0; g.lastMsg="💥 تم تصفير رصيد "+target._name; }
@@ -565,7 +594,7 @@ wss.on("connection", (ws)=>{
         let tmp=actor._score; actor._score=target._score; target._score=tmp; g.lastMsg="🔃 تم تبادل الرصيدين";
       } else if(pend.kind==="freeze"){ target._shields.freeze=2; g.lastMsg="🧊 تم تجميد "+target._name+" لدورين"; }
       else if(pend.kind==="exchangePlayers"){
-        if(pend.first==null){ g.pending={kind:"exchangePlayers",actor:actorIdx,first:targetIdx,cardId:pend.cardId}; g.lastMsg="اختر اللاعب الثاني للتبادل"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return; }
+        if(pend.first==null){ g.pending={kind:"exchangePlayers",actor:actorIdx,first:targetIdx,cardId:pend.cardId}; g.lastMsg="اختر اللاعب الثاني للتبادل - الأول هو "+target._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return; }
         else {
           let first=room.players[pend.first];
           if(targetIdx===pend.first){ g.lastMsg="اختر لاعب مختلف"; g.pending=pend; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return; }
@@ -584,20 +613,25 @@ wss.on("connection", (ws)=>{
       if(type==="confirm_no"){ g.lastMsg="تم إلغاء التفعيل"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
       let c=g.cards.find(x=>x.id===pend.cardId);
       if(pend.confirmType==="shuffle"){
-        // إلغاء القلب؟
-        let nxt=nextPlayerIdx(room, actorIdx, 1);
-        if((room.players[nxt]._shields.cancelShuffle||0)>0){ room.players[nxt]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء القلب"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
+        // إلغاء القلب؟ أي خصم عندو الدرع يقدر يلغي
+        let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelShuffle||0)>0);
+        if(canceller!==-1){ room.players[canceller]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء القلب بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
         g.cards.forEach(x=> x.opened=false);
         for(let i=g.cards.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [g.cards[i],g.cards[j]]=[g.cards[j],g.cards[i]]; }
         g.lastMsg="🔄 تم قلب كل البطاقات وخلطها من جديد!";
       } else if(pend.confirmType==="nextLevel"){
         if(g.level>=3){ g.lastMsg="أنت في آخر مستوى!"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
-        let nxt=nextPlayerIdx(room, actorIdx, 1);
-        if((room.players[nxt]._shields.cancelShuffle||0)>0){ room.players[nxt]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء الانتقال"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
+        let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelShuffle||0)>0);
+        if(canceller!==-1){ room.players[canceller]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء الانتقال بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
         g.level++; g.cards=buildDeck(g.level); room.players.forEach(p=> p._shields=newShields());
         g.lastMsg="🎉 انتقلتم إلى المستوى "+g.level+"!";
       } else if(["reset","stealAll","reverseBalances","bombAll","randomBalances"].includes(pend.confirmType)){
         applySimple(room, actorIdx, {type:pend.confirmType}, ()=>{});
+      } else if(pend.confirmType==="exchange"||pend.confirmType==="exchangePlayers"){
+        // وافق على التبادل - درك نروح لاختيار اللاعب / اللاعبين
+        g.pending={kind:pend.confirmType,actor:actorIdx,cardId:pend.cardId,amount:0,first:null};
+        g.lastMsg="🎯 اختر لاعبًا لتفعيل: "+(c.label||pend.confirmType);
+        broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
       }
       broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return;
     }
