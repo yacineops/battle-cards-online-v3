@@ -5,7 +5,7 @@ const path = require("path");
 const WebSocket = require("ws");
 const PORT = process.env.PORT || 10000;
 const TURN_MS = 20000;
-const SEARCH_WAIT_MS = 15000;
+const SEARCH_WAIT_MS = 12000;
 const BOT_NAMES = ["سيف","نور","لينا","آدم","يوسف","مريم","كريم","سارة","أمين","ريان","أيمن","هدى","عمر","ليلى","أنس","دنيا","فارس","رنا","سليم","نادية","إلياس","خديجة","وليد","أمينة","طارق","سعاد","ياسين","منال","بلال","إيمان"];
 function randomBotName(used){ let pool=BOT_NAMES.filter(n=>!used.includes(n)); if(pool.length===0) pool=BOT_NAMES; return pool[Math.floor(Math.random()*pool.length)]; }
 function makeBot(name){ return { _name:name, _score:0, _shields:newShields(), _isBot:true, readyState:1, send:()=>{}, on:()=>{}, close:()=>{} }; }
@@ -162,11 +162,12 @@ function advanceTurn(room, steps){
 function startTurnTimer(room){
   clearTimer(room);
   if(!room.game || room.game.winner) return;
-  // إذا كان الدور لبوت، يلعب بعد 2 ثانية، ماشي 20 ثانية
+  // البوت يناظر 10 ثواني قبل ما يلعب، كيما البنادم يخمم - باش ما يبانش بلي بوت و ما يخلطش الأمور
   let cur = room.players[room.game.current];
   if(cur && cur._isBot){
-    room._deadline = Date.now() + 3000;
-    room._timer = setTimeout(()=>{ botTakeTurn(room); }, 1800 + Math.floor(Math.random()*1200));
+    room._deadline = Date.now() + 11000;
+    // 10 ثواني + شوية عشوائية (9.5 - 10.5 ثانية) باش ما يبانش روبوتي
+    room._timer = setTimeout(()=>{ botTakeTurn(room); }, 9500 + Math.floor(Math.random()*1000));
     return;
   }
   room._deadline = Date.now() + TURN_MS;
