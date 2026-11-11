@@ -6,7 +6,7 @@
   let ws=null, myCode="", myName="";
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
   if(!myName) myName="اللاعب 1";
-  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null;
+  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="";
 
   function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
   function toast(msg){
@@ -67,7 +67,7 @@
           }
           if(type==="error"){ clearTimeout(joinTimer); toast("❌ "+(d.message||"الغرفة غير موجودة")); if(!gameStarted) setTimeout(openJoin,800); }
           if(type==="game_started"||type==="card_revealed"||type==="game_state"){ gameStarted=true; if(d.game) game=d.game; if(playerNames) myIndex=playerNames.indexOf(myName); renderGame(); playSoundForLastCard(); }
-          if(type==="game_over"){ if(d.game) game=d.game; renderGame(true); }
+          if(type==="game_over"){ if(d.game) game=d.game; if(d.reason==="alone"){ game._aloneWinner=true; } renderGame(true); }
           if(type==="player_left"){ playerCount=Math.max(1,playerCount-1); if(!gameStarted) updateWaiting(); else if(game) renderGame(); }
         }catch(e){}
       };
@@ -136,7 +136,7 @@
     el.onclick=()=>{ el.remove(); };
     document.body.appendChild(el);
     // كيما العادي: إذا ما ضغطش، تتسكر وحدها بعد 1.9 ثانية باش اللعب ما يحبسش
-    setTimeout(()=>{ if(document.getElementById("bc-big-card")===el) el.remove(); }, 1900);
+    setTimeout(()=>{ if(document.getElementById("bc-big-card")===el) el.remove(); }, 2800);
   }
 
   // ===== الطاولة الأصلية بالضبط =====
@@ -170,6 +170,17 @@
     return '<div data-player-idx="'+idx+'" dir="rtl" class="'+cls+' domino-edge" style="width:360px;height:58px;justify-self:center;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 10px;box-sizing:border-box;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);position:relative;min-width:0;flex-wrap:nowrap;overflow:hidden">'+inner+'</div>';
   }
   function renderGame(isOver){
+    // 4) إذا بقى وحدو: فائز + زر العودة للوبي
+    if(game && game.winner && game._aloneWinner){
+      setTimeout(()=>{
+        let old=document.getElementById("bc-alone-box"); if(old) old.remove();
+        let box=document.createElement("div"); box.id="bc-alone-box";
+        box.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px";
+        box.innerHTML='<div style="background:#1e2a38;border-radius:22px;padding:26px;width:100%;max-width:340px;text-align:center;color:#fff"><div style="font-size:56px">🏆</div><div style="font-size:22px;font-weight:900;margin:8px 0">مبروك! فزت باللعبة</div><div style="color:#b0c4de;font-size:14px">اللاعبين الآخرين خرجوا، و بقيت وحدك</div><button id="bc-back-lobby" style="width:100%;border:0;border-radius:14px;padding:14px;font-size:17px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:18px">🏠 العودة إلى اللوبي</button></div>';
+        document.body.appendChild(box);
+        document.getElementById("bc-back-lobby").onclick=()=>{ box.remove(); leaveRoom(); };
+      },300);
+    }
     if(!game || !game.pending || game.pending.kind!=="double") _doublePicks=[];
     if(!game) return;
     if(game.lastCard) showBigCard(game.lastCard);
@@ -217,11 +228,18 @@
     root.innerHTML=board;
     // نفس سلوك الأصلية: الضغط على بطاقة + حالات الاختيار
     let pend = game.pending||null;
+    // 2) البطاقة الكبيرة تبقى للقراءة قبل رسالة التفعيل: 2.8 ثانية تأخير
+    let pendKey = pend ? (pend.kind+"|"+(pend.cardId||"")+"|"+pend.actor) : "";
+    if(pend && pendKey!==_lastPendingKey){ _lastPendingKey=pendKey; _pendingDelayUntil=Date.now()+2800; }
+    if(!pend) _lastPendingKey="";
+    let pendReady = !pend || Date.now()>=_pendingDelayUntil;
     root.querySelectorAll("[data-card]").forEach(el=>{
       el.onclick=()=>{
         let idx=parseInt(el.getAttribute("data-card"),10);
         let c=(game.cards||[])[idx]; if(!c) return;
-        if(pend && pend.actor===myIndex){
+        if(pend && pend.actor===myIndex && Date.now()<_pendingDelayUntil){ toast("⏳ اقرا البطاقة أولا..."); return; }
+        if(pend && !pendReady){ pendEl.textContent="📖 اقرا البطاقة..."; }
+      else if(pend && pend.actor===myIndex){
           if(pend.kind==="replay"){ if(!c.opened){ toast("اختر بطاقة مكشوفة"); return; } sendSafe({type:"replay_choose",code:myCode,index:idx}); return; }
           if(pend.kind==="double"){
             if(c.opened){ toast("اختر بطاقة مغلقة"); return; }
@@ -244,22 +262,41 @@
       };
     });
     // اختيار اللاعب المستهدف: الضغط على بطاقة اللاعب
+    // 1) ألوان: صاحب الدور أخضر، المستهدفين أحمر
+    root.querySelectorAll("[data-player-idx]").forEach(el=>{
+      let pi=parseInt(el.getAttribute("data-player-idx"),10);
+      if(pi===game.current && !game.winner){ el.style.outline="4px solid #00e676"; el.style.boxShadow="0 0 0 4px rgba(0,230,118,.25), 0 0 18px rgba(0,230,118,.6)"; }
+      else { el.style.boxShadow="none"; if(!(pend && pend.actor===myIndex)) el.style.outline="none"; }
+    });
     if(pend && pend.actor===myIndex && ["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
       root.querySelectorAll("[data-player-idx]").forEach(el=>{
-        el.style.cursor="pointer"; el.style.outline="3px solid #00e676";
-        el.onclick=()=>{ let t=parseInt(el.getAttribute("data-player-idx"),10); if(t===myIndex && pend.kind!=="exchangePlayers"){ toast("اختر لاعب آخر"); return; } sendSafe({type:"choose_target",code:myCode,target:t}); };
+        let pi=parseInt(el.getAttribute("data-player-idx"),10);
+        if(pi===pend.actor) { el.style.outline="4px solid #00e676"; return; }
+        el.style.cursor="pointer"; el.style.outline="4px solid #ff5252"; el.style.boxShadow="0 0 18px rgba(255,82,82,.7)";
+        el.onclick=()=>{ if(Date.now()<_pendingDelayUntil){ toast("⏳ اقرا البطاقة أولا..."); return; } let t=parseInt(el.getAttribute("data-player-idx"),10); if(t===myIndex && pend.kind!=="exchangePlayers"){ toast("اختر لاعب آخر"); return; } sendSafe({type:"choose_target",code:myCode,target:t}); };
       });
     }
-    // عداد 20 ثانية
+    // 3) الوقت كيما في العادي: كبير + شريط تقدم + يبان عند صاحب الدور
     if(_timerInt) clearInterval(_timerInt);
     let timeEl=document.getElementById("bc-timer");
-    if(timeEl && game.timeLeft!=null){
+    let barEl=document.getElementById("bc-timer-bar");
+    let badgeEl=document.getElementById("bc-turn-badge");
+    if(timeEl && game.timeLeft!=null && !game.winner){
       let remain=game.timeLeft;
-      let update=()=>{ if(!timeEl) return; timeEl.textContent="⏱️ "+remain+"s"; timeEl.style.color=remain<=5?"#ff5252":"#ffdf6e"; if(remain>0) remain--; };
+      let total=20;
+      let update=()=>{
+        if(!timeEl) return;
+        timeEl.textContent="⏱️ "+remain;
+        timeEl.style.color=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676";
+        timeEl.style.background=remain<=5?"rgba(255,82,82,.18)":"rgba(0,0,0,.35)";
+        if(barEl){ barEl.style.width=Math.max(0,(remain/total*100))+"%"; barEl.style.background=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; }
+        if(badgeEl){ badgeEl.textContent="⏱️ دورك: "+remain+"s"; badgeEl.style.display=(myIndex===game.current)?"inline-block":"none"; }
+        if(remain>0) remain--;
+      };
       update(); _timerInt=setInterval(update,1000);
     }
     // نافذة التأكيد
-    if(pend && pend.actor===myIndex && pend.kind==="confirm"){
+    if(pend && pend.actor===myIndex && pend.kind==="confirm" && pendReady){
       let m=document.getElementById("bc-confirm-modal"); if(m) m.remove();
       let mod=document.createElement("div"); mod.id="bc-confirm-modal";
       mod.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px";
@@ -268,10 +305,12 @@
       document.getElementById("bc-yes").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_yes",code:myCode}); };
       document.getElementById("bc-no").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_no",code:myCode}); };
     } else { let m=document.getElementById("bc-confirm-modal"); if(m) m.remove(); }
+    if(pend && !pendReady){ let pe=document.getElementById("bc-pend-msg"); if(pe) pe.textContent="📖 اقرا البطاقة..."; }
     // رسالة الاختيار
     let pendEl=document.getElementById("bc-pend-msg");
     if(pendEl){
-      if(pend && pend.actor===myIndex){
+      if(pend && !pendReady){ pendEl.textContent="📖 اقرا البطاقة..."; }
+      else if(pend && pend.actor===myIndex){
         if(pend.kind==="replay") pendEl.textContent="♻️ اضغط على بطاقة مكشوفة لإعادة تفعيلها";
         else if(pend.kind==="double") pendEl.textContent="🃏 اضغط على بطاقتين مغلقتين (اخترت "+_doublePicks.length+" / 2)";
         else if(pend.kind==="double_choose") pendEl.textContent="🃏 اختر واحدة من البطاقتين";
@@ -341,6 +380,12 @@
     updateWaiting();
     document.getElementById("bc-cancel").onclick=()=>{ sendSafe({type:"leave",code:myCode}); openMenu(); };
     document.getElementById("bc-start-btn").onclick=()=>{ if(playerCount<maxPlayers){ toast("مازال ناقص "+(maxPlayers-playerCount)+" لاعب"); return; } sendSafe({type:"start",code:myCode}); };
+  }
+  function leaveRoom(){
+    gameStarted=false; game=null; myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1; _lastBigKey=""; _lastPendingKey=""; _pendingDelayUntil=0;
+    try{ if(ws) ws.close(); ws=null; }catch(e){}
+    // رجوع للصفحة الأولى الأصلية
+    location.reload();
   }
   function handleOpen(e){
     let btnEl=e.target && e.target.closest ? e.target.closest("button") : null;
