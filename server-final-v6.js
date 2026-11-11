@@ -1,74 +1,90 @@
-// battle-online-v6.js — ربط اللعبة بالسيرفر V6 فقط
-(function(){
-  if(window.BattleOnlineV6) return;
-  let ws=null, queue=[], roomCode="", myIndex=0, myName="اللاعب 1", isOnline=false;
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const WebSocket = require('ws');
 
-  function send(o){
-    if(ws && ws.readyState===1) ws.send(JSON.stringify(o));
-    else queue.push(o);
-  }
+const PORT = process.env.PORT || 10000;
 
-  function connect(){
-    if(ws && (ws.readyState===1 || ws.readyState===0)) return;
-    ws = new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
-    ws.onopen = ()=>{ while(queue.length) ws.send(JSON.stringify(queue.shift())); };
-    ws.onmessage = (ev)=>{
-      let m;
-      try{ m=JSON.parse(ev.data); }catch{ return; }
-      window.dispatchEvent(new CustomEvent("battle-v6-msg",{detail:m}));
-      if(m.type==="room_created"){ roomCode=m.code; myIndex=m.myIndex||0; isOnline=true; }
-      if(m.type==="room_joined"){ roomCode=m.code||roomCode; myIndex=m.myIndex??myIndex; isOnline=true; }
-    };
-  }
+// 1. سيرفر يبعث صفحة اللعبة
+const server = http.createServer((req, res) => {
+  let file = req.url === '/' ? '/index.html' : req.url;
+  let filePath = path.join(__dirname, file);
 
-  window.BattleOnlineV6 = {
-    get isOnline(){ return isOnline; },
-    get roomCode(){ return roomCode; },
-    get myIndex(){ return myIndex; },
-    createRoom(name, max){
-      myName=(name||"اللاعب 1").slice(0,20);
-      isOnline=true;
-      connect();
-      send({type:"create_room", name:myName, maxPlayers:max||2});
-    },
-    joinRoom(name, code){
-      myName=(name||"اللاعب 1").slice(0,20);
-      roomCode=String(code||"").trim();
-      isOnline=true;
-      connect();
-      send({type:"join_room", name:myName, code:roomCode});
-    },
-    pickCard(i){ send({type:"pick_card", index:i}); },
-    applyEffect(players, direction){ send({type:"apply_effect", players, direction}); },
-    nextTurn(s, players, direction){ send({type:"next_turn", steps:s||1, players, direction}); }
-  };
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    if (file.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+    else if (file.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+    else res.setHeader('Content-Type', 'text/html');
+    res.end(data);
+  });
+});
 
-  connect();
+// 2. WebSocket على نفس السيرفر
+const wss = new WebSocket.Server({ server });
 
-  function hook(){
-    document.querySelectorAll("button").forEach(btn=>{
-      let t = btn.textContent||"";
-      if(t.includes("إنشاء الغرفة") && !btn.dataset.v6){
-        btn.dataset.v6="1";
-        btn.addEventListener("click", ()=>{
-          let nameInput = document.querySelector('input[placeholder="اللاعب 1"]');
-          let name = nameInput ? nameInput.value : "اللاعب 1";
-          window.BattleOnlineV6.createRoom(name, 2);
-        });
+let rooms = {};
+let queue = [];
+
+function send(ws, obj){ try{ ws.send(JSON.stringify(obj)); }catch{} }
+function makeCode(){ return String(Math.floor(100000 + Math.random()*900000)); }
+
+wss.on('connection', (ws) => {
+  ws.on('message', (raw) => {
+    let msg;
+    try{ msg = JSON.parse(raw); }catch{ return; }
+
+    if(msg.type === 'create_room'){
+      let code = makeCode();
+      while(rooms[code]) code = makeCode();
+      rooms[code] = { players: [{ ws, name: msg.name || 'اللاعب 1' }], maxPlayers: msg.maxPlayers || 2 };
+      ws.roomCode = code;
+      send(ws, { type: 'room_created', code });
+    }
+
+    if(msg.type === 'join_room'){
+      let room = rooms[msg.code];
+      if(!room){ send(ws, { type: 'error', message: 'الغرفة غير موجودة' }); return; }
+      if(room.players.length >= room.maxPlayers){ send(ws, { type: 'error', message: 'الغرفة ممتلئة' }); return; }
+      room.players.push({ ws, name: msg.name || 'لاعب' });
+      ws.roomCode = msg.code;
+      room.players.forEach(p => send(p.ws, {
+        type: 'room_update',
+        code: msg.code,
+        players: room.players.map(p => p.name),
+        count: room.players.length,
+        max: room.maxPlayers
+      }));
+      if(room.players.length === room.maxPlayers){
+        room.players.forEach(p => send(p.ws, { type: 'game_start', code: msg.code, players: room.players.map(p => p.name) }));
       }
-      if(t.trim()==="دخول" && !btn.dataset.v6){
-        btn.dataset.v6="1";
-        btn.addEventListener("click", ()=>{
-          let codeInput = document.querySelector('input[placeholder="000000"]');
-          let nameInput = document.querySelector('input[placeholder="اللاعب 1"]');
-          let code = codeInput ? codeInput.value : "";
-          let name = nameInput ? nameInput.value : "اللاعب 1";
-          if(code.length>=4) window.BattleOnlineV6.joinRoom(name, code);
-        });
-      }
-    });
-  }
+    }
 
-  new MutationObserver(hook).observe(document.body, {childList:true, subtree:true});
-  hook();
-})();
+    if(msg.type === 'find_match'){
+      ws.playerName = msg.name || 'لاعب';
+      ws.wantPlayers = msg.maxPlayers || 2;
+      queue = queue.filter(p => p.ws !== ws && p.ws.readyState === 1);
+      let mate = queue.find(p => p.wantPlayers === ws.wantPlayers);
+      if(!mate){ queue.push({ ws, name: ws.playerName, wantPlayers: ws.wantPlayers }); send(ws, { type: 'searching' }); return; }
+      queue = queue.filter(p => p.ws !== mate.ws);
+      let code = makeCode();
+      rooms[code] = { players: [{ ws: mate.ws, name: mate.name }, { ws, name: ws.playerName }], maxPlayers: ws.wantPlayers };
+      [mate.ws, ws].forEach(s => { s.roomCode = code; send(s, { type: 'match_found', code, players: rooms[code].players.map(p => p.name) }); });
+    }
+  });
+
+  ws.on('close', () => {
+    queue = queue.filter(p => p.ws !== ws);
+    if(ws.roomCode && rooms[ws.roomCode]){
+      rooms[ws.roomCode].players = rooms[ws.roomCode].players.filter(p => p.ws !== ws);
+      if(rooms[ws.roomCode].players.length === 0) delete rooms[ws.roomCode];
+    }
+  });
+});
+
+server.listen(PORT, () => {
+  console.log('WS V7 + GAME listening on ' + PORT);
+});
