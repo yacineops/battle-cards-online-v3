@@ -1,83 +1,74 @@
-// server.js - v6 معدل - نفس السيرفر، زدنا غير النواقص
-const WebSocket = require('ws');
-const PORT = process.env.PORT || 10000;
-const wss = new WebSocket.Server({ port: PORT });
+// battle-online-v6.js — ربط اللعبة بالسيرفر V6 فقط
+(function(){
+  if(window.BattleOnlineV6) return;
+  let ws=null, queue=[], roomCode="", myIndex=0, myName="اللاعب 1", isOnline=false;
 
-let rooms = {}; // code -> { players: [], maxPlayers }
-let waiting = null; // للبحث العشوائي find_match
+  function send(o){
+    if(ws && ws.readyState===1) ws.send(JSON.stringify(o));
+    else queue.push(o);
+  }
 
-function makeCode(){
-  return String(Math.floor(100000 + Math.random()*900000));
-}
-function send(ws, obj){ try{ ws.send(JSON.stringify(obj)); }catch(e){} }
-function broadcast(roomCode, obj){
-  if(!rooms[roomCode]) return;
-  rooms[roomCode].players.forEach(p=>send(p.ws, obj));
-}
+  function connect(){
+    if(ws && (ws.readyState===1 || ws.readyState===0)) return;
+    ws = new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
+    ws.onopen = ()=>{ while(queue.length) ws.send(JSON.stringify(queue.shift())); };
+    ws.onmessage = (ev)=>{
+      let m;
+      try{ m=JSON.parse(ev.data); }catch{ return; }
+      window.dispatchEvent(new CustomEvent("battle-v6-msg",{detail:m}));
+      if(m.type==="room_created"){ roomCode=m.code; myIndex=m.myIndex||0; isOnline=true; }
+      if(m.type==="room_joined"){ roomCode=m.code||roomCode; myIndex=m.myIndex??myIndex; isOnline=true; }
+    };
+  }
 
-wss.on('connection', (ws)=>{
-  console.log("New player connected");
-  ws.roomCode = null;
+  window.BattleOnlineV6 = {
+    get isOnline(){ return isOnline; },
+    get roomCode(){ return roomCode; },
+    get myIndex(){ return myIndex; },
+    createRoom(name, max){
+      myName=(name||"اللاعب 1").slice(0,20);
+      isOnline=true;
+      connect();
+      send({type:"create_room", name:myName, maxPlayers:max||2});
+    },
+    joinRoom(name, code){
+      myName=(name||"اللاعب 1").slice(0,20);
+      roomCode=String(code||"").trim();
+      isOnline=true;
+      connect();
+      send({type:"join_room", name:myName, code:roomCode});
+    },
+    pickCard(i){ send({type:"pick_card", index:i}); },
+    applyEffect(players, direction){ send({type:"apply_effect", players, direction}); },
+    nextTurn(s, players, direction){ send({type:"next_turn", steps:s||1, players, direction}); }
+  };
 
-  ws.on('message', (msg)=>{
-    let data;
-    try{ data = JSON.parse(msg); }catch(e){ return; }
-    console.log("Received:", data);
+  connect();
 
-    // 1 - إنشاء غرفة - كان ناقصو يرجع الرقم
-    if(data.type === "create_room"){
-      const code = makeCode();
-      rooms[code] = { players: [{ ws, name: data.name || "Player 1" }], maxPlayers: data.maxPlayers || 2 };
-      ws.roomCode = code;
-      // هذي هي الإضافة المهمة: نرجع الرقم الحقيقي من السيرفر
-      send(ws, { type:"room_created", roomCode: code, code: code });
-    }
-
-    // 2 - دخول لغرفة
-    if(data.type === "join_room"){
-      const code = String(data.roomCode || data.code || "").trim();
-      const room = rooms[code];
-      if(!room){ send(ws, { type:"room_not_found", message:"الغرفة غير موجودة" }); return; }
-      if(room.players.length >= room.maxPlayers){ send(ws, { type:"error", message:"الغرفة ممتلئة" }); return; }
-
-      room.players.push({ ws, name: data.name || "Player 2" });
-      ws.roomCode = code;
-      send(ws, { type:"room_joined", roomCode: code, players: room.players.length });
-      broadcast(code, { type:"player_joined", players: room.players.length });
-
-      // هذي الإضافة الثانية: كي تكمل الغرفة، نبعث game_start للزوج
-      if(room.players.length >= room.maxPlayers){
-        broadcast(code, { type:"game_start", roomCode: code, players: room.players.map(p=>p.name) });
-      } else {
-        send(ws, { type:"waiting", players: room.players.length });
+  function hook(){
+    document.querySelectorAll("button").forEach(btn=>{
+      let t = btn.textContent||"";
+      if(t.includes("إنشاء الغرفة") && !btn.dataset.v6){
+        btn.dataset.v6="1";
+        btn.addEventListener("click", ()=>{
+          let nameInput = document.querySelector('input[placeholder="اللاعب 1"]');
+          let name = nameInput ? nameInput.value : "اللاعب 1";
+          window.BattleOnlineV6.createRoom(name, 2);
+        });
       }
-    }
-
-    // 3 - البحث عن لاعب - كان مكاش كامل، زدناه
-    if(data.type === "find_match"){
-      if(waiting && waiting.readyState === 1){
-        const code = makeCode();
-        rooms[code] = { players: [{ ws: waiting, name:"Player 1" }, { ws, name: data.name || "Player 2" }], maxPlayers: 2 };
-        waiting.roomCode = code;
-        ws.roomCode = code;
-        send(waiting, { type:"match_found", roomCode: code });
-        send(ws, { type:"match_found", roomCode: code });
-        broadcast(code, { type:"game_start", roomCode: code });
-        waiting = null;
-      } else {
-        waiting = ws;
-        send(ws, { type:"waiting", message:"نستنى في لاعب..." });
+      if(t.trim()==="دخول" && !btn.dataset.v6){
+        btn.dataset.v6="1";
+        btn.addEventListener("click", ()=>{
+          let codeInput = document.querySelector('input[placeholder="000000"]');
+          let nameInput = document.querySelector('input[placeholder="اللاعب 1"]');
+          let code = codeInput ? codeInput.value : "";
+          let name = nameInput ? nameInput.value : "اللاعب 1";
+          if(code.length>=4) window.BattleOnlineV6.joinRoom(name, code);
+        });
       }
-    }
-  });
+    });
+  }
 
-  ws.on('close', ()=>{
-    if(ws.roomCode && rooms[ws.roomCode]){
-      rooms[ws.roomCode].players = rooms[ws.roomCode].players.filter(p=>p.ws !== ws);
-      if(rooms[ws.roomCode].players.length === 0) delete rooms[ws.roomCode];
-    }
-    if(waiting === ws) waiting = null;
-  });
-});
-
-console.log("WS V6 modified - listening on " + PORT);
+  new MutationObserver(hook).observe(document.body, {childList:true, subtree:true});
+  hook();
+})();
