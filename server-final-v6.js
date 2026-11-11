@@ -36,6 +36,8 @@ function newShields(){ return {shield:0,bombShield:0,stealShield:0,resetShield:0
 function removeFromAllQueues(ws){ ["2","3","4"].forEach((k)=>{ queues[k]=queues[k].filter((p)=>p!==ws); }); }
 function clearTimer(room){ if(room._timer){ clearTimeout(room._timer); room._timer=null; } }
 function removeFromRoom(ws){
+  if(ws._removeTimer){ clearTimeout(ws._removeTimer); ws._removeTimer=null; }
+  ws._disconnected=false; ws._pendingRemove=false;
   if(ws._searchTimer){ clearTimeout(ws._searchTimer); ws._searchTimer=null; }
   if(!ws._roomCode) return;
   const room = rooms.get(ws._roomCode);
@@ -167,7 +169,7 @@ function startTurnTimer(room){
   if(cur && cur._isBot){
     room._deadline = Date.now() + 7000;
     // 6 ثواني + شوية عشوائية (5.5 - 6.5 ثانية) باش ما يبانش روبوتي
-    room._timer = setTimeout(()=>{ botTakeTurn(room); }, 5500 + Math.floor(Math.random()*1000));
+    room._timer = setTimeout(()=>{ try{ botTakeTurn(room); }catch(e){ console.error('bot timer error', e); try{ room.game.pending=null; }catch(_){} finishTurn(room); } }, 5500 + Math.floor(Math.random()*1000));
     return;
   }
   room._deadline = Date.now() + TURN_MS;
@@ -319,6 +321,7 @@ function applySimple(room, actorIdx, c, cbDone){
     }
 
 function botTakeTurn(room){
+  try{
   const g=room.game; if(!g || g.winner) return;
   clearTimer(room);
   let actorIdx=g.current;
@@ -377,6 +380,7 @@ function botTakeTurn(room){
   let idx=closed[Math.floor(Math.random()*closed.length)];
   let c=g.cards[idx]; c.opened=true; g.lastCard=c;
   handleCardEffect(room, actorIdx, c, false);
+  }catch(e){ console.error("bot error", e && e.stack || e); try{ room.game.pending=null; }catch(_){} finishTurn(room); }
 }
 function handleBotTarget(room, actorIdx, pend, targetIdx){
   // نفس منطق choose_target لكن للبوت: نستدعي عبر إنشاء pending مؤقت ونطبق
@@ -429,6 +433,20 @@ function handleBotConfirm(room, actorIdx, pend, yes){
   broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room);
 }
 
+// حارس: إذا اللعبة معلقة بلا تايمر (بوت ما لعبش)، يعاود يشغل الدور بعد 5 ثواني
+setInterval(()=>{
+  try{
+    rooms.forEach((room)=>{
+      if(!room.game || room.game.winner) return;
+      if(room._timer) return; // كاين تايمر يخدم
+      // ما كاش تايمر - الجولة معلقة، يعاود يشغلها
+      console.log("watchdog: restarting stuck room", room.code, "current", room.game.current);
+      startTurnTimer(room);
+    });
+  }catch(e){ console.error("watchdog error", e); }
+}, 5000);
+process.on("uncaughtException", (e)=>{ console.error("uncaught", e && e.stack || e); });
+process.on("unhandledRejection", (e)=>{ console.error("unhandled", e && e.stack || e); });
 wss.on("connection", (ws)=>{
   ws._roomCode=null; ws._name="اللاعب 1"; ws._score=0; ws._shields=newShields();
   ws.on("message", (raw)=>{
@@ -456,6 +474,20 @@ wss.on("connection", (ws)=>{
       const names=getNames(room);
       send(ws, { type:"joined", code, players:room.players.length, count:room.players.length, maxPlayers:room.maxPlayers, names });
       broadcast(room, { type:"player_joined", code, players:room.players.length, count:room.players.length, maxPlayers:room.maxPlayers, names }, ws);
+      return;
+    }
+    if(type==="rejoin"){
+      const room=rooms.get(d.code);
+      if(!room || !room.game){ send(ws,{type:"error", message:"الغرفة غير موجودة"}); return; }
+      let oldIdx=room.players.findIndex(pp=> pp._name===d.name && (pp._disconnected || pp._pendingRemove));
+      if(oldIdx===-1) oldIdx=room.players.findIndex(pp=> pp._name===d.name && !pp._isBot);
+      if(oldIdx===-1){ send(ws,{type:"error", message:"لم يتم العثور على مقعدك"}); return; }
+      let oldWs=room.players[oldIdx];
+      if(oldWs._removeTimer){ clearTimeout(oldWs._removeTimer); oldWs._removeTimer=null; }
+      ws._name=oldWs._name; ws._score=oldWs._score; ws._shields=oldWs._shields; ws._roomCode=room.code; ws._isBot=false;
+      room.players[oldIdx]=ws;
+      send(ws,{type:"rejoined", code:room.code, names:getNames(room)});
+      broadcastAll(room,{type:"game_state", code:room.code, game:publicGame(room)});
       return;
     }
     if(type==="quick_play" || type==="find_match" || type==="search" || type==="matchmaking"){
@@ -630,6 +662,19 @@ wss.on("connection", (ws)=>{
       return;
     }
   });
-  ws.on("close", ()=>{ removeFromAllQueues(ws); removeFromRoom(ws); });
+  ws.on("close", ()=>{
+    removeFromAllQueues(ws);
+    // إذا الغرفة فيها بوتات، نستنى 15 ثانية قبل ما نحذف اللاعب، باش يقدر يرجع إذا انقطع لحظة
+    let room=ws._roomCode ? rooms.get(ws._roomCode) : null;
+    let hasBots = room && room.players.some(pp=> pp._isBot);
+    if(hasBots && room && room.game && !room.game.winner){
+      ws._disconnected=true; ws._pendingRemove=true;
+      if(ws._removeTimer) clearTimeout(ws._removeTimer);
+      ws._removeTimer=setTimeout(()=>{ ws._pendingRemove=false; removeFromRoom(ws); }, 15000);
+      broadcastAll(room,{type:"game_state", code:room.code, game:publicGame(room)});
+      return;
+    }
+    removeFromRoom(ws);
+  });
 });
 server.listen(PORT, ()=>{ console.log("Server on "+PORT+" - V16 cards+timer"); });
