@@ -6,7 +6,7 @@
   let ws=null, myCode="", myName="";
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
   if(!myName) myName="اللاعب 1";
-  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="";
+  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null;
 
   function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
   function toast(msg){
@@ -141,6 +141,18 @@
 
   // ===== الطاولة الأصلية بالضبط =====
   // ننسخ نفس structure تاع index.html: domino-board + player domino-edge/side + card face back/front
+  function shieldIcons(idx){
+    let sh=(game.shields&&game.shields[idx])||{};
+    let out="";
+    if(sh.shield>0) out+="🛡️";
+    if(sh.bombShield>0) out+="🧨";
+    if(sh.stealShield>0) out+="💰🛡️";
+    if(sh.resetShield>0) out+="🔐";
+    if(sh.reflect>0) out+="🪞";
+    if(sh.goldenShield>0) out+="🏆";
+    if(sh.freeze>0) out+="🧊";
+    return out;
+  }
   function playerHTML(idx, pos){
     let names=game.names||playerNames, scores=game.scores||[];
     let name=names[idx]||("اللاعب "+(idx+1));
@@ -150,13 +162,15 @@
       + '<div style="text-align:right;min-width:0"><div style="font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</div>'
       + '<div style="font-size:10px;min-height:14px;line-height:1">—</div></div>'
       + '<div style="font-size:16px;font-weight:900;color:#ffdf6e;white-space:nowrap">'+(scores[idx]||0)+' نقطة</div>'
+      + '<div style="font-size:14px;line-height:1">'+shieldIcons(idx)+'</div>'
       + (isCur?'<div style="background:#00e676;color:#06281a;font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;white-space:nowrap">⭐ دورك</div>':"");
     if(pos==="side"){
-      return '<div dir="rtl" class="'+cls+' domino-side" style="width:58px;height:360px;align-self:center;justify-self:center;padding:10px 6px;box-sizing:border-box;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:0">'+inner+'</div>';
+      return '<div data-player-idx="'+idx+'" dir="rtl" class="'+cls+' domino-side" style="width:58px;height:360px;align-self:center;justify-self:center;padding:10px 6px;box-sizing:border-box;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:0">'+inner+'</div>';
     }
-    return '<div dir="rtl" class="'+cls+' domino-edge" style="width:360px;height:58px;justify-self:center;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 10px;box-sizing:border-box;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);position:relative;min-width:0;flex-wrap:nowrap;overflow:hidden">'+inner+'</div>';
+    return '<div data-player-idx="'+idx+'" dir="rtl" class="'+cls+' domino-edge" style="width:360px;height:58px;justify-self:center;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 10px;box-sizing:border-box;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);position:relative;min-width:0;flex-wrap:nowrap;overflow:hidden">'+inner+'</div>';
   }
   function renderGame(isOver){
+    if(!game || !game.pending || game.pending.kind!=="double") _doublePicks=[];
     if(!game) return;
     if(game.lastCard) showBigCard(game.lastCard);
     // نغلق overlay القائمة ونعرض اللعبة في نفس صفحة اللعبة، بلا overlay جديد
@@ -187,7 +201,7 @@
       + '<div style="display:flex;gap:6px"><button class="iconBtn" id="bc-home" style="width:44px;height:44px;padding:0;font-size:20px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer">🏠</button></div></div>'
       + '<div style="height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin:6px 0 10px"><i style="display:block;height:100%;background:linear-gradient(90deg,#00e676,#ffc107);border-radius:99px;transition:width .5s;width:'+Math.round(opened/cards.length*100)+'%"></i></div>'
       + '<div style="font-size:17px;font-weight:800;margin:2px 0 6px">تم كشف '+opened+' / '+cards.length+'</div>'
-      + '<div style="min-height:38px;margin:4px 0;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:center">'+(game.lastMsg||"")+'</div>'
+      + '<div id="bc-pend-msg" style="min-height:38px;margin:4px 0;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:center">'+(game.lastMsg||"")+'</div>'
       + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+(game.winner?("🏆 الفائز: "+game.winner):(myTurn?"⭐ دورك - اكشف بطاقة واحدة":"⏳ دور: "+(names[game.current]||"")))+'</div>'
       + '<style>.domino-board{--domino-thickness:58px;--domino-length:min(360px,calc(100vw - 20px),calc(100dvh - 320px))}</style>'
       + '<div class="domino-board" dir="ltr" style="flex:1 1 auto;display:grid;grid-template-areas:\'top top top\' \'left cards right\' \'bottom bottom bottom\';grid-template-columns:'+(names.length>=3?"58px":"0px")+' minmax(0,1fr) '+(names.length>=4?"58px":"0px")+';grid-template-rows:auto minmax(0,1fr) auto;gap:6px;margin:4px 0;min-height:0">'
@@ -201,10 +215,71 @@
       + (isOver?'<button class="btn secondary" id="bc-back-menu" style="border:0;border-radius:14px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#455a64,#607d8b);color:#fff">🏠 القائمة</button>':"")+'</div>'
       + '</div></div>';
     root.innerHTML=board;
-    // نفس سلوك الأصلية: الضغط على بطاقة
+    // نفس سلوك الأصلية: الضغط على بطاقة + حالات الاختيار
+    let pend = game.pending||null;
     root.querySelectorAll("[data-card]").forEach(el=>{
-      el.onclick=()=>{ if(!myTurn){ toast("⏳ مش دورك"); return; } let idx=parseInt(el.getAttribute("data-card"),10); sendSafe({type:"play_card",code:myCode,index:idx}); };
+      el.onclick=()=>{
+        let idx=parseInt(el.getAttribute("data-card"),10);
+        let c=(game.cards||[])[idx]; if(!c) return;
+        if(pend && pend.actor===myIndex){
+          if(pend.kind==="replay"){ if(!c.opened){ toast("اختر بطاقة مكشوفة"); return; } sendSafe({type:"replay_choose",code:myCode,index:idx}); return; }
+          if(pend.kind==="double"){
+            if(c.opened){ toast("اختر بطاقة مغلقة"); return; }
+            if(_doublePicks.includes(idx)) _doublePicks=_doublePicks.filter(x=>x!==idx);
+            else if(_doublePicks.length<2) _doublePicks.push(idx);
+            else { toast("اخترت بطاقتين، اضغط تأكيد"); return; }
+            // نظهر الاختيار
+            document.querySelectorAll("[data-card]").forEach(e2=>{ let ii=parseInt(e2.getAttribute("data-card"),10); e2.style.outline=_doublePicks.includes(ii)?"4px solid #00e676":"none"; });
+            if(_doublePicks.length===2){ setTimeout(()=>{ sendSafe({type:"double_pick",code:myCode,picks:_doublePicks}); _doublePicks=[]; },400); }
+            return;
+          }
+          if(pend.kind==="double_choose"){
+            if(!pend.picks || !pend.picks.includes(idx)){ toast("اختر واحدة من البطاقتين"); return; }
+            sendSafe({type:"double_choose",code:myCode,index:idx}); return;
+          }
+          toast("أكمل الاختيار أولا"); return;
+        }
+        if(!myTurn){ toast("⏳ مش دورك"); return; }
+        sendSafe({type:"play_card",code:myCode,index:idx});
+      };
     });
+    // اختيار اللاعب المستهدف: الضغط على بطاقة اللاعب
+    if(pend && pend.actor===myIndex && ["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
+      root.querySelectorAll("[data-player-idx]").forEach(el=>{
+        el.style.cursor="pointer"; el.style.outline="3px solid #00e676";
+        el.onclick=()=>{ let t=parseInt(el.getAttribute("data-player-idx"),10); if(t===myIndex && pend.kind!=="exchangePlayers"){ toast("اختر لاعب آخر"); return; } sendSafe({type:"choose_target",code:myCode,target:t}); };
+      });
+    }
+    // عداد 20 ثانية
+    if(_timerInt) clearInterval(_timerInt);
+    let timeEl=document.getElementById("bc-timer");
+    if(timeEl && game.timeLeft!=null){
+      let remain=game.timeLeft;
+      let update=()=>{ if(!timeEl) return; timeEl.textContent="⏱️ "+remain+"s"; timeEl.style.color=remain<=5?"#ff5252":"#ffdf6e"; if(remain>0) remain--; };
+      update(); _timerInt=setInterval(update,1000);
+    }
+    // نافذة التأكيد
+    if(pend && pend.actor===myIndex && pend.kind==="confirm"){
+      let m=document.getElementById("bc-confirm-modal"); if(m) m.remove();
+      let mod=document.createElement("div"); mod.id="bc-confirm-modal";
+      mod.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px";
+      mod.innerHTML='<div style="background:#1e2a38;border-radius:20px;padding:22px;width:100%;max-width:320px;text-align:center;color:#fff"><div style="font-size:48px">❓</div><div style="font-size:18px;font-weight:800;margin:8px 0">هل تريد تفعيل؟</div><div style="color:#b0c4de;font-size:14px">'+(game.lastMsg||"")+'</div><button id="bc-yes" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:14px">✅ نعم، فعّلها</button><button id="bc-no" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:#c62828;color:#fff;margin-top:8px">❌ لا، ألغيها</button></div>';
+      document.body.appendChild(mod);
+      document.getElementById("bc-yes").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_yes",code:myCode}); };
+      document.getElementById("bc-no").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_no",code:myCode}); };
+    } else { let m=document.getElementById("bc-confirm-modal"); if(m) m.remove(); }
+    // رسالة الاختيار
+    let pendEl=document.getElementById("bc-pend-msg");
+    if(pendEl){
+      if(pend && pend.actor===myIndex){
+        if(pend.kind==="replay") pendEl.textContent="♻️ اضغط على بطاقة مكشوفة لإعادة تفعيلها";
+        else if(pend.kind==="double") pendEl.textContent="🃏 اضغط على بطاقتين مغلقتين (اخترت "+_doublePicks.length+" / 2)";
+        else if(pend.kind==="double_choose") pendEl.textContent="🃏 اختر واحدة من البطاقتين";
+        else if(["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)) pendEl.textContent="🎯 اضغط على اللاعب المستهدف";
+        else pendEl.textContent=game.lastMsg||"";
+      } else if(pend) pendEl.textContent="⏳ نستنى "+(game.names[pend.actor]||"")+" يكمل الاختيار...";
+      else pendEl.textContent=game.lastMsg||"";
+    }
     let home=document.getElementById("bc-home"); if(home) home.onclick=()=>{ sendSafe({type:"leave",code:myCode}); location.reload(); };
     let leave=document.getElementById("bc-leave-game"); if(leave) leave.onclick=()=>{ gameStarted=false; game=null; sendSafe({type:"leave",code:myCode}); myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1; toast("👋 غادرت الغرفة"); openMenu(); };
     let back=document.getElementById("bc-back-menu"); if(back) back.onclick=()=>{ gameStarted=false; game=null; sendSafe({type:"leave",code:myCode}); myCode=""; openMenu(); };
