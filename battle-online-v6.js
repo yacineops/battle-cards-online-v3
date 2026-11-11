@@ -1,4 +1,4 @@
-// battle-online-v6.js - V10 - أزرار تعمل + حفظ الاسم
+// battle-online-v6.js - V11 - زر ابدأ يبقى داخل أونلاين، لا يرجع لمعاينة React المحلية
 (function(){
   "use strict";
   const WS_URL = "wss://battle-cards-online-v2.onrender.com";
@@ -11,10 +11,31 @@
   let maxPlayers = 2;
   let playerNames = [];
   let joinTimer = null;
+  let gameStarted = false;
 
   function saveName(n){
     myName = (n || "").trim().slice(0,20) || "اللاعب 1";
     try { localStorage.setItem("bc_player_name", myName); } catch(e){}
+  }
+
+  // نخفي شاشة React المحلية التي تحتنا - هي التي فيها "معاينة محلية"
+  function hideReactLocalModal(){
+    try {
+      let all = document.querySelectorAll("div, section, dialog");
+      all.forEach(function(el){
+        let t = (el.textContent || "");
+        if(t.indexOf("معاينة محلية") !== -1 && t.length < 2000){
+          // هذا هو الـ Modal تاع React، نخفيه
+          let box = el;
+          for(let i=0;i<4;i++){
+            if(!box.parentElement) break;
+            box = box.parentElement;
+            if(box.style) box.style.display = "none";
+            if(box.textContent && box.textContent.indexOf("العب أونلاين") !== -1) break;
+          }
+        }
+      });
+    } catch(e){}
   }
 
   function toast(msg){
@@ -36,16 +57,13 @@
 
   function showOverlay(title, innerHTML){
     closeOverlay();
+    hideReactLocalModal();
     let o = document.createElement("div");
     o.id = "bc-online-overlay";
-    // إصلاح V10: لا نغلق عند اللمس خارج المربع، ولا نمنع اللمسة من الوصول للأزرار
     o.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;touch-action:manipulation";
     o.innerHTML = '<div id="bc-box" style="background:#1e2a38;border-radius:20px;padding:22px;width:100%;max-width:360px;text-align:center;color:#fff">'
       + '<h3 style="margin:0 0 8px;font-size:20px">' + title + '</h3>' + innerHTML + '</div>';
-    // إذا لمس خارج المربع، لا نفعل شيئا - لا نغلق، ولا نمنع
-    o.addEventListener("click", function(e){
-      if(e.target === o){ e.preventDefault(); }
-    });
+    o.addEventListener("click", function(e){ if(e.target === o){ e.preventDefault(); } });
     document.body.appendChild(o);
     return o;
   }
@@ -65,7 +83,6 @@
 
   function bindCountSelector(){
     document.querySelectorAll(".bc-count-btn").forEach(function(b){
-      // نستعمل click عادي بدون stopPropagation، حتى يعمل الزر
       b.onclick = function(){
         maxPlayers = parseInt(b.getAttribute("data-count"), 10) || 2;
         document.querySelectorAll(".bc-count-btn").forEach(function(x){
@@ -92,7 +109,6 @@
           let type = (d.type || "").toLowerCase();
           if(d.maxPlayers) maxPlayers = parseInt(d.maxPlayers,10) || maxPlayers;
           if(d.names) playerNames = d.names;
-          if(d.playerNames) playerNames = d.playerNames;
           if(type === "room_created"){
             if(d.code) myCode = String(d.code);
             playerCount = 1;
@@ -106,18 +122,23 @@
             if(typeof d.count === "number") playerCount = d.count;
             clearTimeout(joinTimer);
             if(type === "match_found"){ toast("🎉 اكتمل العدد! " + playerCount + " / " + maxPlayers); openWaiting(); }
-            else updateWaiting();
-            if(playerCount >= maxPlayers) toast("🎉 اكتمل العدد! " + playerCount + " / " + maxPlayers);
+            else if(!gameStarted) updateWaiting();
+            if(playerCount >= maxPlayers && !gameStarted) toast("🎉 اكتمل العدد! " + playerCount + " / " + maxPlayers);
           }
           if(type === "error"){
             clearTimeout(joinTimer);
             toast("❌ " + (d.message || "الغرفة غير موجودة"));
             setTimeout(openJoin, 800);
           }
-          if(type === "game_started"){ toast("▶️ بدأت اللعبة!"); closeOverlay(); }
+          // إذا صاحبك ضغط ابدأ، ندخل نحن أيضًا لشاشة اللعبة، ولا نغلق الأونلاين
+          if(type === "game_started"){
+            gameStarted = true;
+            toast("▶️ بدأت اللعبة!");
+            openGameScreen();
+          }
           if(type === "player_left"){
             playerCount = Math.max(1, playerCount - 1);
-            updateWaiting();
+            if(!gameStarted) updateWaiting();
           }
         }catch(e){}
       };
@@ -137,11 +158,8 @@
     if(codeEl) codeEl.textContent = myCode || "••••••";
     if(countEl) countEl.textContent = "👥 اللاعبون: " + playerCount + " / " + maxPlayers;
     if(namesEl){
-      if(playerNames && playerNames.length){
-        namesEl.innerHTML = playerNames.map(function(n){ return "<div>✅ " + n + "</div>"; }).join("");
-      } else {
-        namesEl.innerHTML = "<div>✅ " + myName + " (أنت)</div>";
-      }
+      if(playerNames && playerNames.length) namesEl.innerHTML = playerNames.map(function(n){ return "<div>✅ " + n + "</div>"; }).join("");
+      else namesEl.innerHTML = "<div>✅ " + myName + " (أنت)</div>";
     }
     if(startBtn){
       if(playerCount >= maxPlayers){
@@ -156,7 +174,26 @@
     }
   }
 
+  // شاشة اللعبة أونلاين - تبقى داخل الأونلاين، لا تخرج لـ React
+  function openGameScreen(){
+    gameStarted = true;
+    showOverlay("🎮 لعبة أونلاين - بدأت!",
+      '<p style="color:#ffc107;font-size:15px;font-weight:700;margin:0 0 6px">غرفة: ' + myCode + ' • ' + playerCount + ' / ' + maxPlayers + '</p>'
+      + '<div style="background:rgba(255,255,255,.08);border-radius:14px;padding:12px;margin:10px 0;text-align:right;line-height:2">'
+      + (playerNames && playerNames.length ? playerNames.map(function(n,i){ return "<div>" + (i===0?"👑 ":"") + "✅ " + n + (n===myName ? " (أنت)" : "") + "</div>"; }).join("") : "<div>✅ " + myName + " (أنت)</div>")
+      + '</div>'
+      + '<p style="color:#b0c4de;font-size:13px;line-height:1.7;margin:8px 0">أنت الآن داخل اللعبة أونلاين مع ' + playerNames.join(" و ") + '.<br>طاولة البطاقات ستظهر هنا في المرحلة القادمة، والآن الاتصال ثابت ولن تخرج لصفحة المعاينة المحلية.</p>'
+      + '<button id="bc-leave-game" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:10px 0 0">🚪 مغادرة الغرفة</button>'
+    );
+    document.getElementById("bc-leave-game").onclick = function(){
+      gameStarted = false;
+      sendSafe({ type:"leave", code: myCode });
+      closeOverlay();
+    };
+  }
+
   function openMenu(){
+    gameStarted = false;
     showOverlay("🌐 العب أونلاين",
       '<p style="color:#b0c4de;font-size:14px;margin:0 0 10px">اختر عدد اللاعبين أولًا، بعدها اختر طريقة اللعب.</p>'
       + '<label style="display:block;text-align:right;font-size:13px;color:#b0c4de;margin-bottom:4px">اسمك<br><input id="bc-name" value="'+myName+'" placeholder="اكتب اسمك" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:15px;margin-top:5px"></label>'
@@ -167,9 +204,7 @@
       + '<button id="bc-close" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.15);color:#fff;margin:5px 0">⬅️ رجوع</button>'
     );
     bindCountSelector();
-    let nameInput = document.getElementById("bc-name");
-    nameInput.addEventListener("input", function(e){ saveName(e.target.value); });
-    // نربط الأزرار بـ onclick مباشرة، بدون capture وبدون stopPropagation
+    document.getElementById("bc-name").addEventListener("input", function(e){ saveName(e.target.value); });
     document.getElementById("bc-close").onclick = closeOverlay;
     document.getElementById("bc-quick").onclick = openSearch;
     document.getElementById("bc-join-open").onclick = openJoin;
@@ -190,13 +225,8 @@
       + '<div style="font-size:13px;color:#ffc107;font-weight:700">⏳ البحث جاري... (1 / ' + maxPlayers + ')</div>'
       + '<button id="bc-cancel-search" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:14px 0 0">إلغاء البحث</button>'
     );
-    connect().then(function(){
-      sendSafe({ type:"quick_play", name: myName, maxPlayers: maxPlayers });
-    }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
-    document.getElementById("bc-cancel-search").onclick = function(){
-      sendSafe({ type:"cancel_search" });
-      openMenu();
-    };
+    connect().then(function(){ sendSafe({ type:"quick_play", name: myName, maxPlayers: maxPlayers }); }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
+    document.getElementById("bc-cancel-search").onclick = function(){ sendSafe({ type:"cancel_search" }); openMenu(); };
   }
 
   function openJoin(){
@@ -238,9 +268,9 @@
     document.getElementById("bc-cancel").onclick = function(){ sendSafe({ type:"leave", code: myCode }); closeOverlay(); };
     document.getElementById("bc-start-btn").onclick = function(){
       if(playerCount < maxPlayers){ toast("مازال ناقص " + (maxPlayers - playerCount) + " لاعب"); return; }
+      // إصلاح V11: لا نغلق الأونلاين، ولا نضغط على زر React
       sendSafe({ type:"start", code: myCode });
-      toast("▶️ بدينا!");
-      closeOverlay();
+      openGameScreen();
     };
   }
 
@@ -248,14 +278,12 @@
     let btn = e.target && e.target.closest ? e.target.closest("button") : null;
     if(!btn) return;
     let txt = (btn.textContent || "").trim();
-    if(txt.indexOf("العب أونلاين") !== -1 || txt.indexOf("لعب أونلاين") !== -1 || txt.indexOf("لعب مع صديق") !== -1){
-      // لا نستعمل capture ولا stopImmediatePropagation هنا، حتى لا نكسر أزرار React
+    // نفتح أونلاين فقط من أزرار الصفحة الرئيسية، ليس من داخل الـ Modal المحلي
+    if(txt === "العب أونلاين" || txt.indexOf("🌐") !== -1 && txt.indexOf("العب أونلاين") !== -1){
       e.preventDefault();
       setTimeout(openMenu, 80);
     }
   }
-  // نستعمل click عادي في bubble، وليس capture
   document.addEventListener("click", handleOpen, false);
-
-  console.log("✅ Battle Online V10 - buttons fixed + name saved");
+  console.log("✅ Battle Online V11 - start stays inside online");
 })();
