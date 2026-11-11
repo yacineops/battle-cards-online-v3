@@ -8,7 +8,7 @@ const TURN_MS = 20000;
 const SEARCH_WAIT_MS = 12000;
 const BOT_NAMES = ["سيف","نور","لينا","آدم","يوسف","مريم","كريم","سارة","أمين","ريان","أيمن","هدى","عمر","ليلى","أنس","دنيا","فارس","رنا","سليم","نادية","إلياس","خديجة","وليد","أمينة","طارق","سعاد","ياسين","منال","بلال","إيمان"];
 function randomBotName(used){ let pool=BOT_NAMES.filter(n=>!used.includes(n)); if(pool.length===0) pool=BOT_NAMES; return pool[Math.floor(Math.random()*pool.length)]; }
-function makeBot(name){ return { _name:name, _score:0, _shields:newShields(), _isBot:true, readyState:1, send:()=>{}, on:()=>{}, close:()=>{} }; }
+function makeBot(name, flag){ return { _name:name, _flag:flag||randomFlag([]), _score:0, _shields:newShields(), _isBot:true, readyState:1, send:()=>{}, on:()=>{}, close:()=>{} }; }
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml" };
 const server = http.createServer((req, res) => {
   let urlPath = req.url.split("?")[0];
@@ -29,9 +29,12 @@ function broadcast(room, obj, exceptWs){ room.players.forEach((p)=>{ if(p!==exce
 function broadcastAll(room, obj){ room.players.forEach((p)=> send(p,obj)); }
 function makeCode(){ let c=""; do{ c=String(Math.floor(100000+Math.random()*900000)); }while(rooms.has(c)); return c; }
 function normCount(n){ n=parseInt(n,10); if(n===3) return 3; if(n===4) return 4; return 2; }
-function getNames(room){ return room.players.map((p)=> p._name || "اللاعب 1"); }
+function getNames(room){ return room.players.map((p)=> (p._flag ? p._flag+" " : "") + (p._name || "اللاعب 1")); }
 function getScores(room){ return room.players.map((p)=> p._score || 0); }
 function getShields(room){ return room.players.map((p)=> p._shields || newShields()); }
+// أعلام اللاعبين - بلا إسرائيل
+const FLAGS=["🇩🇿","🇲🇦","🇹🇳","🇪🇬","🇱🇾","🇸🇦","🇦🇪","🇶🇦","🇰🇼","🇯🇴","🇱🇧","🇵🇸","🇮🇶","🇸🇾","🇾🇪","🇫🇷","🇪🇸","🇮🇹","🇩🇪","🇬🇧","🇵🇹","🇳🇱","🇧🇪","🇨🇭","🇹🇷","🇺🇸","🇨🇦","🇧🇷","🇦🇷","🇲🇽","🇷🇺","🇺🇦","🇵🇱","🇸🇪","🇳🇴","🇩🇰","🇯🇵","🇰🇷","🇨🇳","🇮🇳","🇦🇺","🇿🇦","🇳🇬","🇰🇪","🇸🇳","🇨🇲","🇬🇭","🌍","⭐"];
+function randomFlag(used){ let pool=FLAGS.filter(f=> !used.includes(f)); if(pool.length===0) pool=FLAGS; return pool[Math.floor(Math.random()*pool.length)]; }
 function newShields(){ return {shield:0,bombShield:0,stealShield:0,resetShield:0,reflect:0,shieldReverse:0,shieldSkip:0,goldenShield:0,cancelShuffle:0,cancelReplay:0,freeze:0}; }
 function removeFromAllQueues(ws){ ["2","3","4"].forEach((k)=>{ queues[k]=queues[k].filter((p)=>p!==ws); }); }
 function clearTimer(room){ if(room._timer){ clearTimeout(room._timer); room._timer=null; } }
@@ -476,11 +479,12 @@ setInterval(()=>{
 process.on("uncaughtException", (e)=>{ console.error("uncaught", e && e.stack || e); });
 process.on("unhandledRejection", (e)=>{ console.error("unhandled", e && e.stack || e); });
 wss.on("connection", (ws)=>{
-  ws._roomCode=null; ws._name="اللاعب 1"; ws._score=0; ws._shields=newShields();
+  ws._roomCode=null; ws._name="اللاعب 1"; ws._flag="🌍"; ws._score=0; ws._shields=newShields();
   ws.on("message", (raw)=>{
     let d; try{ d=JSON.parse(raw.toString()); }catch(e){ return; }
     const type=(d.type||"").toLowerCase();
     if(d.name && String(d.name).trim()){ ws._name = String(d.name).trim().slice(0,20); }
+    if(d.flag && typeof d.flag==="string" && d.flag.length<=8){ ws._flag = d.flag.slice(0,8); }
     const wanted = normCount(d.maxPlayers || d.playerCount || d.count || d.players || 2);
     if(type==="create" || type==="create_room"){
       removeFromAllQueues(ws); removeFromRoom(ws);
@@ -512,7 +516,7 @@ wss.on("connection", (ws)=>{
       if(oldIdx===-1){ send(ws,{type:"error", message:"لم يتم العثور على مقعدك"}); return; }
       let oldWs=room.players[oldIdx];
       if(oldWs._removeTimer){ clearTimeout(oldWs._removeTimer); oldWs._removeTimer=null; }
-      ws._name=oldWs._name; ws._score=oldWs._score; ws._shields=oldWs._shields; ws._roomCode=room.code; ws._isBot=false;
+      ws._name=oldWs._name; ws._flag=oldWs._flag; ws._score=oldWs._score; ws._shields=oldWs._shields; ws._roomCode=room.code; ws._isBot=false;
       room.players[oldIdx]=ws;
       send(ws,{type:"rejoined", code:room.code, names:getNames(room)});
       broadcastAll(room,{type:"game_state", code:room.code, game:publicGame(room)});
@@ -541,7 +545,7 @@ wss.on("connection", (ws)=>{
         const used=allReals.map(r=> r._name);
         const players=[...allReals];
         // نكملو الباقي ببوتات بأسماء عشوائية حتى نوصلو للعدد المطلوب (2 أو 3 أو 4)
-        for(let i=players.length;i<maxPlayers;i++){ let nm=randomBotName(used); used.push(nm); let b=makeBot(nm); players.push(b); }
+        for(let i=players.length;i<maxPlayers;i++){ let nm=randomBotName(used); used.push(nm); let usedFlags=players.map(pp=> pp._flag||""); let fl=randomFlag(usedFlags); let b=makeBot(nm, fl); players.push(b); }
         const room={ code, maxPlayers, players, game:null, _timer:null, _deadline:0 };
         rooms.set(code, room);
         const names=getNames(room);
