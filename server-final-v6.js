@@ -42,6 +42,15 @@ function removeFromRoom(ws){
     if(room.game && room.game.current >= room.players.length) room.game.current = 0;
     broadcast(room, { type:"room_update", code:room.code, players:room.players.length, count:room.players.length, maxPlayers:room.maxPlayers, names:getNames(room) });
     broadcast(room, { type:"player_left", code:room.code, players:room.players.length, maxPlayers:room.maxPlayers, names:getNames(room) });
+    // إذا بقى لاعب واحد و اللعبة بدأت: يحسب فائز
+    if(room.game && !room.game.winner && room.players.length===1){
+      clearTimer(room);
+      room.game.winner = room.players[0]._name;
+      room.game.lastMsg = "🏆 فزت باللعبة لأن اللاعبين الآخرين خرجوا!";
+      room.game.pending = null;
+      broadcastAll(room, { type:"game_over", code:room.code, game: publicGame(room), reason:"alone", winner: room.players[0]._name });
+      return;
+    }
     if(room.game){ startTurnTimer(room); broadcastAll(room, { type:"game_state", code:room.code, game: publicGame(room) }); }
   }
   ws._roomCode=null; ws._score=0; ws._shields=newShields();
