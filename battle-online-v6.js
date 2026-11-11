@@ -6,7 +6,7 @@
   let ws=null, myCode="", myName="";
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
   if(!myName) myName="اللاعب 1";
-  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="";
+  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false;
 
   function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
   function toast(msg){
@@ -310,34 +310,35 @@
       });
     }
     // 3) الوقت كيما في العادي: ثابت في أعلى الشاشة باش يبان ديما حتى لو ضاق الـ header
+    // العداد: حبة صغيرة كيما في العادي + شريط رقيق، يخدم بحلقة مستقلة ما تتعاودش تتصفر مع كل رسم
     let fixed=document.getElementById("bc-timer-fixed");
     if(!fixed && !game.winner){
       fixed=document.createElement("div"); fixed.id="bc-timer-fixed";
-      fixed.style.cssText="position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:1800;width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,.78);border:3px solid #00e676;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.45)";
-      fixed.innerHTML='<div id="bc-timer-fixed-num" style="font-size:19px;font-weight:900;color:#fff;line-height:1">20</div>';
+      fixed.style.cssText="position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:1800;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.28);border-radius:99px;padding:5px 12px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:86px;box-shadow:0 4px 12px rgba(0,0,0,.35)";
+      fixed.innerHTML='<div id="bc-timer-fixed-num" style="font-size:16px;font-weight:900;color:#fff;line-height:1">⏱️ 20</div><div style="width:76px;height:4px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden"><div id="bc-timer-fixed-bar" style="height:100%;width:100%;background:#00e676;border-radius:99px"></div></div>';
       document.body.appendChild(fixed);
     }
     if(game.winner && fixed) fixed.remove();
-    if(_timerInt) clearInterval(_timerInt);
-    let timeEl=null; let barEl=null; let badgeEl=null; // عداد واحد برك: الثابت في الأعلى
-    if(timeEl && game.timeLeft!=null && !game.winner){
-      let remain=game.timeLeft;
-      let total=20;
-      let update=()=>{
-        let fNum=document.getElementById("bc-timer-fixed-num");
-        let fCircle=document.getElementById("bc-timer-fixed");
-        if(fNum){ fNum.textContent=remain; fNum.style.color="#fff"; }
-        if(fCircle){ let col=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; fCircle.style.borderColor=col; fCircle.style.boxShadow="0 0 0 3px "+col+"33, 0 4px 14px rgba(0,0,0,.45)"; }
-        if(!timeEl) { if(remain>0) remain--; return; }
-        timeEl.textContent="⏱️ "+remain;
-        timeEl.style.color=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676";
-        timeEl.style.background=remain<=5?"rgba(255,82,82,.18)":"rgba(0,0,0,.35)";
-        if(barEl){ barEl.style.width=Math.max(0,(remain/total*100))+"%"; barEl.style.background=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; }
-        if(badgeEl){ badgeEl.textContent="⏱️ دورك: "+remain+"s"; badgeEl.style.display=(myIndex===game.current)?"inline-block":"none"; }
-        if(remain>0) remain--;
-      };
-      update(); _timerInt=setInterval(update,1000);
+    // نحفظ deadline من السيرفر و نخدم بحلقة واحدة مستقلة
+    if(game.timeLeft!=null && !game.winner){ _timerDeadline=Date.now()+(game.timeLeft*1000); }
+    if(!_timerLoopStarted){
+      _timerLoopStarted=true;
+      setInterval(()=>{
+        let el=document.getElementById("bc-timer-fixed-num");
+        let bar=document.getElementById("bc-timer-fixed-bar");
+        let box=document.getElementById("bc-timer-fixed");
+        if(!el || !box) return;
+        if(!_timerDeadline){ el.textContent="⏱️ 20"; return; }
+        let remain=Math.max(0, Math.ceil((_timerDeadline-Date.now())/1000));
+        el.textContent="⏱️ "+remain;
+        let col=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676";
+        el.style.color=remain<=5?"#ff5252":"#fff";
+        if(bar){ bar.style.width=Math.max(0,(remain/20*100))+"%"; bar.style.background=col; }
+        if(box){ box.style.borderColor=remain<=5?"#ff5252":"rgba(255,255,255,.28)"; }
+      }, 250);
     }
+    // لا نمس حلقة العداد المستقلة هنا - هي اللي تحسب، و إلا يتعاود يتصفر
+    // العداد يتحسب في الحلقة المستقلة فوق، ما نعاودوش نصفره هنا
     // نافذة التأكيد - تظهر بعد 2.8 ثانية (بعد قراءة البطاقة الكبيرة)
     if(pend && pend.actor===myIndex && pend.kind==="confirm"){
       let m=document.getElementById("bc-confirm-modal"); if(m) m.remove();
@@ -430,7 +431,7 @@
     document.getElementById("bc-cancel").onclick=()=>{ sendSafe({type:"leave",code:myCode}); openMenu(); };
     document.getElementById("bc-start-btn").onclick=()=>{ if(playerCount<maxPlayers){ toast("مازال ناقص "+(maxPlayers-playerCount)+" لاعب"); return; } sendSafe({type:"start",code:myCode}); };
   }
-  function leaveRoom(){ let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove();
+  function leaveRoom(){ _timerDeadline=0; let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove();
     gameStarted=false; game=null; myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1; _lastBigKey=""; _lastPendingKey=""; _pendingDelayUntil=0;
     try{ if(ws) ws.close(); ws=null; }catch(e){}
     // رجوع للصفحة الأولى الأصلية
