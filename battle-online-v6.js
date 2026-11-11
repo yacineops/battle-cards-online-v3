@@ -171,6 +171,27 @@
   }
   function renderGame(isOver){
     if(!game || !game.pending || game.pending.kind!=="replay"){ let pk=document.getElementById("bc-replay-picker"); if(pk) pk.remove(); }
+    // صفحة الفائز المبهرة: ترتيب + آخر بطاقة في الوسط + كونفيتي
+    if(game && game.winner && !game._aloneWinner){
+      let ex=document.getElementById("bc-winner-page");
+      if(!ex){
+        let namesW=game.names||playerNames, scoresW=game.scores||[];
+        let ranking=namesW.map((n,i)=>({name:n, score:scoresW[i]||0, isMe:(i===myIndex)})).sort((a,b)=> b.score-a.score);
+        let medals=["🥇","🥈","🥉","4️⃣"];
+        let rows=ranking.map((r,i)=>'<div style="display:flex;align-items:center;gap:10px;background:'+(r.isMe?"rgba(0,230,118,.18)":"rgba(255,255,255,.06)")+';border:'+(r.isMe?"2px solid #00e676":"1px solid rgba(255,255,255,.12)")+';border-radius:14px;padding:10px 12px"><div style="font-size:24px;min-width:32px;text-align:center">'+(medals[i]||(i+1))+'</div><div style="flex:1;text-align:right;font-weight:900;font-size:16px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.name+(r.isMe?" <span style=\"font-size:11px;color:#00e676\">• أنت</span>":"")+'</div><div style="font-weight:900;font-size:17px;color:#ffdf6e;white-space:nowrap">'+r.score+' نقطة</div></div>').join("");
+        let lc=game.lastCard;
+        let lcBg=!lc?"#fff":(lc.type==="points"?((lc.value||0)>0?"linear-gradient(135deg,#c8e6c9,#a5d6a7)":"linear-gradient(135deg,#ffcdd2,#ef9a9a)"):"linear-gradient(135deg,#fff3e0,#ffcc80)");
+        let lcHtml=!lc?"":('<div style="margin:14px auto 4px;width:110px;height:150px;border-radius:16px;background:'+lcBg+';border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.4)"><div style="font-size:48px;line-height:1">'+(lc.icon||"⭐")+'</div><div style="font-size:12px;font-weight:900;color:#111;margin-top:6px;padding:0 6px;text-align:center">'+(lc.label||"")+'</div></div><div style="font-size:12px;color:#b0c4de;margin-bottom:2px">🃏 آخر بطاقة تم كشفها</div>');
+        let confetti=Array.from({length:24},(_,i)=>{ let em=["🎉","⭐","🏆","🎊","✨"][i%5]; let left=Math.floor(Math.random()*100); let delay=(Math.random()*1.5).toFixed(2); let dur=(2.5+Math.random()*2).toFixed(2); return '<div style="position:absolute;top:-30px;left:'+left+'%;font-size:20px;animation:bcFall '+dur+'s linear '+delay+'s infinite"> '+em+' </div>'; }).join("");
+        let page=document.createElement("div"); page.id="bc-winner-page";
+        page.style.cssText="position:fixed;inset:0;background:linear-gradient(180deg,#0f2027,#203a43,#2c5364);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto";
+        page.innerHTML='<style>@keyframes bcFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:.2}} @keyframes bcPop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}</style><div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+confetti+'</div><div style="position:relative;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.2);border-radius:26px;padding:24px 18px;width:100%;max-width:380px;text-align:center;color:#fff;animation:bcPop .5s"><div style="font-size:64px;line-height:1">🏆</div><div style="font-size:14px;color:#ffdf6e;font-weight:900;margin-top:6px;letter-spacing:1px">الفائز باللعبة</div><div style="font-size:30px;font-weight:900;margin:6px 0;line-height:1.1">'+game.winner+'</div><div style="font-size:14px;color:#b0c4de">'+(game.winner===(namesW[myIndex]||"")?"🎉 مبروك! فزت باللعبة":"انتهت اللعبة - مبروك للفائز")+'</div>'+lcHtml+'<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">'+rows+'</div><button id="bc-play-again" style="width:100%;border:0;border-radius:14px;padding:14px;font-size:17px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:16px">🔄 العب مرة أخرى</button><button id="bc-winner-menu" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;margin-top:8px">🏠 القائمة الرئيسية</button></div>';
+        document.body.appendChild(page);
+        document.getElementById("bc-play-again").onclick=()=>{ page.remove(); let mp=maxPlayers||namesW.length; leaveRoom(); setTimeout(()=>{ maxPlayers=mp; playerCount=mp; openMenu(); setTimeout(()=>{ let b=document.getElementById("bc-quick"); if(b) b.click(); }, 300); }, 300); };
+        document.getElementById("bc-winner-menu").onclick=()=>{ page.remove(); leaveRoom(); };
+        let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove();
+      }
+    }
     // 4) إذا بقى وحدو: فائز + زر العودة للوبي
     if(game && game.winner && game._aloneWinner){
       setTimeout(()=>{
