@@ -399,8 +399,10 @@ wss.on("connection", (ws)=>{
       if(picks.length!==2) return;
       let c1=g.cards[picks[0]], c2=g.cards[picks[1]];
       if(!c1||!c2||c1.opened||c2.opened) return;
+      // نكشف البطاقتين باش اللاعب يشوفهم و يختار
+      c1.opened=true; c2.opened=true;
       g.pending={kind:"double_choose",actor:actorIdx,picks,cardId:g.pending.cardId};
-      g.lastMsg="🃏 اختر واحدة من البطاقتين لتفعيلها";
+      g.lastMsg="🃏 اختر واحدة من البطاقتين لتفعيلها - الأخرى سترجع مغلقة";
       broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
     }
     if(type==="double_choose"){
@@ -409,8 +411,9 @@ wss.on("connection", (ws)=>{
       const actorIdx=room.players.indexOf(ws); if(actorIdx!==g.pending.actor) return;
       let idx=parseInt(d.index,10); if(!g.pending.picks.includes(idx)) return;
       let chosen=g.cards[idx];
-      // نفتح البطاقتين، نفعل المختارة
-      g.pending.picks.forEach(i=> g.cards[i].opened=true);
+      // المختارة تبقى مكشوفة و تتفعل، الأخرى ترجع مغلقة
+      g.pending.picks.forEach(i=>{ if(i!==idx) g.cards[i].opened=false; });
+      g.cards[idx].opened=true;
       g.pending=null; clearTimer(room); g.lastCard=chosen;
       handleCardEffect(room, actorIdx, chosen, false);
       return;
