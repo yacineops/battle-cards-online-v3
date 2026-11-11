@@ -6,7 +6,8 @@
   let ws=null, myCode="", myName="";
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
   if(!myName) myName="اللاعب 1";
-  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false, _timerTotal=20;
+  let _rejoinData=null; try{ _rejoinData=JSON.parse(sessionStorage.getItem("bc_rejoin")||"null"); if(_rejoinData) sessionStorage.removeItem("bc_rejoin"); }catch(e){}
+let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false, _timerTotal=20;
 
   function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
   function toast(msg){
@@ -45,9 +46,24 @@
       if(ws && ws.readyState===1) return resolve(ws);
       try{ if(ws) ws.close(); }catch(e){}
       ws=new WebSocket(WS_URL);
-      ws.onopen=()=>resolve(ws);
+      ws.onopen=()=>{
+        resolve(ws);
+        // إذا كنا راجعين من انقطاع، نرجع لنفس الغرفة تلقائيا
+        if(_rejoinData && _rejoinData.code){
+          myCode=String(_rejoinData.code); myName=_rejoinData.name||myName; maxPlayers=_rejoinData.maxPlayers||maxPlayers;
+          try{ ws.send(JSON.stringify({type:"rejoin", code:myCode, name:myName})); toast("🔄 جاري الرجوع للجولة..."); }catch(e){}
+          _rejoinData=null;
+        }
+      };
       ws.onerror=()=>reject(new Error("WS"));
-      ws.onclose=()=>{ if(gameStarted) toast("⚠️ انقطع الاتصال بالسيرفر"); };
+      let _reconnectTries=0;
+ws.onclose=()=>{
+  if(!gameStarted) return;
+  if(_reconnectTries>=3){ toast("⚠️ انقطع الاتصال بالسيرفر - أعد تحميل الصفحة"); return; }
+  _reconnectTries++;
+  toast("🔄 إعادة الاتصال... ("+_reconnectTries+")");
+  setTimeout(()=>{ try{ sessionStorage.setItem("bc_rejoin", JSON.stringify({code:myCode, name:myName, maxPlayers:maxPlayers})); }catch(e){} location.reload(); }, 1500);
+};
       ws.onmessage=(ev)=>{
         try{
           let d=JSON.parse(ev.data); let type=(d.type||"").toLowerCase();
@@ -66,6 +82,7 @@
             if(playerCount>=maxPlayers && !gameStarted) toast("🎉 اكتمل العدد! "+playerCount+" / "+maxPlayers);
           }
           if(type==="error"){ clearTimeout(joinTimer); toast("❌ "+(d.message||"الغرفة غير موجودة")); if(!gameStarted) setTimeout(openJoin,800); }
+          if(type==="rejoined"){ if(d.code) myCode=String(d.code); gameStarted=true; toast("✅ رجعت للجولة"); }
           if(type==="game_started"||type==="card_revealed"||type==="game_state"){ gameStarted=true; if(d.game) game=d.game; if(playerNames) myIndex=playerNames.indexOf(myName); renderGame(); playSoundForLastCard(); }
           if(type==="game_over"){ if(d.game) game=d.game; if(d.reason==="alone"){ game._aloneWinner=true; } renderGame(true); }
           if(type==="player_left"){ playerCount=Math.max(1,playerCount-1); if(!gameStarted) updateWaiting(); else if(game) renderGame(); }
@@ -464,5 +481,7 @@
     if(txt==="العب أونلاين" || (txt.indexOf("العب أونلاين")!==-1 && txt.length<30)){ e.preventDefault(); setTimeout(openMenu,80); }
   }
   document.addEventListener("click",handleOpen,false);
+  // إذا رجعنا من انقطاع، نتصل تلقائيا و نرجع للجولة بلا ما نضغط والو
+  if(_rejoinData && _rejoinData.code){ setTimeout(()=>{ connect().catch(()=>{}); }, 300); }
   console.log("✅ Battle Online V15 - نفس طاولة الأصلية");
 })();
