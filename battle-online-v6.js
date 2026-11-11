@@ -208,9 +208,9 @@
     }).join("");
     // نفس تخطيط domino-board الأصلي
     let board='<div dir="rtl" style="min-height:100dvh;background:'+levelBg+';background-attachment:fixed;color:#fff;text-align:center;overflow-x:clip;box-sizing:border-box;font-family:system-ui,Tahoma,Arial,sans-serif">'
-      + '<div style="height:100dvh;max-height:100dvh;display:flex;flex-direction:column;padding:8px 10px;overflow:hidden;position:relative;z-index:1;box-sizing:border-box">'
+      + '<div style="height:100dvh;max-height:100dvh;display:flex;flex-direction:column;padding:52px 10px 8px;overflow:hidden;position:relative;z-index:1;box-sizing:border-box">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:18px;font-weight:800;color:#ffdf6e">'+levelLabel+' • '+(game.direction===1?"➡️":"⬅️")+' • غرفة '+myCode+'</div>'
-      + '<div style="display:flex;flex-direction:column;gap:3px;align-items:center"><div style="display:flex;gap:6px;align-items:center"><div id="bc-timer" style="font-size:22px;font-weight:900;color:#00e676;background:rgba(0,0,0,.35);padding:6px 18px;border-radius:99px;border:2px solid rgba(255,255,255,.25)">⏱️ '+(game.timeLeft!=null?game.timeLeft:20)+'</div><span id="bc-turn-badge" style="display:none;font-size:12px;font-weight:900;color:#fff;background:#00c853;padding:5px 10px;border-radius:99px">⏱️ دورك</span></div><div style="width:200px;height:8px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden"><div id="bc-timer-bar" style="height:100%;width:100%;background:#00e676;transition:width 1s linear;border-radius:99px"></div></div></div>'
+      + '<div></div>'
       + '<div style="display:flex;gap:6px"><button class="iconBtn" id="bc-home" style="width:44px;height:44px;padding:0;font-size:20px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer">🏠</button></div></div>'
       + '<div style="height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin:6px 0 10px"><i style="display:block;height:100%;background:linear-gradient(90deg,#00e676,#ffc107);border-radius:99px;transition:width .5s;width:'+Math.round(opened/cards.length*100)+'%"></i></div>'
       + '<div style="font-size:17px;font-weight:800;margin:2px 0 6px">تم كشف '+opened+' / '+cards.length+'</div>'
@@ -313,15 +313,13 @@
     let fixed=document.getElementById("bc-timer-fixed");
     if(!fixed && !game.winner){
       fixed=document.createElement("div"); fixed.id="bc-timer-fixed";
-      fixed.style.cssText="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:1800;background:rgba(0,0,0,.78);border:2px solid rgba(255,255,255,.35);border-radius:99px;padding:8px 18px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.5)";
-      fixed.innerHTML='<div id="bc-timer-fixed-num" style="font-size:24px;font-weight:900;color:#00e676;line-height:1">⏱️ 20</div><div style="width:130px;height:7px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden"><div id="bc-timer-fixed-bar" style="height:100%;width:100%;background:#00e676;transition:width 1s linear"></div></div><div id="bc-timer-fixed-label" style="font-size:11px;font-weight:800;color:#b0c4de">دور اللاعب</div>';
+      fixed.style.cssText="position:fixed;top:0;left:0;right:0;z-index:1800;background:rgba(0,0,0,.85);border-bottom:2px solid rgba(255,255,255,.2);padding:6px 12px 7px;display:flex;align-items:center;justify-content:center;gap:10px";
+      fixed.innerHTML='<div id="bc-timer-fixed-num" style="font-size:22px;font-weight:900;color:#00e676;line-height:1;min-width:70px">⏱️ 20</div><div style="flex:1;max-width:220px;height:8px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden"><div id="bc-timer-fixed-bar" style="height:100%;width:100%;background:#00e676;transition:width 1s linear"></div></div><div id="bc-timer-fixed-label" style="font-size:12px;font-weight:800;color:#b0c4de;white-space:nowrap">دور اللاعب</div>';
       document.body.appendChild(fixed);
     }
     if(game.winner && fixed) fixed.remove();
     if(_timerInt) clearInterval(_timerInt);
-    let timeEl=document.getElementById("bc-timer");
-    let barEl=document.getElementById("bc-timer-bar");
-    let badgeEl=document.getElementById("bc-turn-badge");
+    let timeEl=null; let barEl=null; let badgeEl=null; // عداد واحد برك: الثابت في الأعلى
     if(timeEl && game.timeLeft!=null && !game.winner){
       let remain=game.timeLeft;
       let total=20;
