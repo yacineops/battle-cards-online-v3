@@ -262,6 +262,13 @@
       };
     });
     // اختيار اللاعب المستهدف: الضغط على بطاقة اللاعب
+    // اختيار مزدوج: البطاقتين المكشوفتين يبانو بالأخضر باش تعرف واش تختار
+    if(pend && pend.kind==="double_choose" && pend.picks){
+      root.querySelectorAll("[data-card]").forEach(el=>{
+        let ii=parseInt(el.getAttribute("data-card"),10);
+        if(pend.picks.includes(ii)){ el.style.outline="4px solid #00e676"; el.style.boxShadow="0 0 18px rgba(0,230,118,.7)"; el.style.cursor="pointer"; }
+      });
+    }
     // 1) ألوان: صاحب الدور أخضر، المستهدفين أحمر
     root.querySelectorAll("[data-player-idx]").forEach(el=>{
       let pi=parseInt(el.getAttribute("data-player-idx"),10);
