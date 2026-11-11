@@ -114,7 +114,7 @@
   // في العادي: كي تكشف بطاقة تكبر في الوسط 260x360، اضغط في أي مكان باش تكمل
   function showBigCard(c){
     if(!c) return;
-    let key=(c.id||"")+":"+(c.type||"")+":"+(c.value||"")+":"+(game&&game.lastMsg||"");
+    let key=(c.id||"")+":"+(c.type||"")+":"+(c.value||""); // لا نستعمل lastMsg هنا، وإلا تعاود تطلع وتحجب الضغط
     if(key===_lastBigKey) return;
     _lastBigKey=key;
     let oldEl=document.getElementById("bc-big-card");
@@ -170,6 +170,7 @@
     return '<div data-player-idx="'+idx+'" dir="rtl" class="'+cls+' domino-edge" style="width:360px;height:58px;justify-self:center;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 10px;box-sizing:border-box;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);position:relative;min-width:0;flex-wrap:nowrap;overflow:hidden">'+inner+'</div>';
   }
   function renderGame(isOver){
+    if(!game || !game.pending || game.pending.kind!=="replay"){ let pk=document.getElementById("bc-replay-picker"); if(pk) pk.remove(); }
     // 4) إذا بقى وحدو: فائز + زر العودة للوبي
     if(game && game.winner && game._aloneWinner){
       setTimeout(()=>{
@@ -209,6 +210,7 @@
     let board='<div dir="rtl" style="min-height:100dvh;background:'+levelBg+';background-attachment:fixed;color:#fff;text-align:center;overflow-x:clip;box-sizing:border-box;font-family:system-ui,Tahoma,Arial,sans-serif">'
       + '<div style="height:100dvh;max-height:100dvh;display:flex;flex-direction:column;padding:8px 10px;overflow:hidden;position:relative;z-index:1;box-sizing:border-box">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:18px;font-weight:800;color:#ffdf6e">'+levelLabel+' • '+(game.direction===1?"➡️":"⬅️")+' • غرفة '+myCode+'</div>'
+      + '<div style="display:flex;flex-direction:column;gap:3px;align-items:center"><div style="display:flex;gap:6px;align-items:center"><div id="bc-timer" style="font-size:22px;font-weight:900;color:#00e676;background:rgba(0,0,0,.35);padding:6px 18px;border-radius:99px;border:2px solid rgba(255,255,255,.25)">⏱️ '+(game.timeLeft!=null?game.timeLeft:20)+'</div><span id="bc-turn-badge" style="display:none;font-size:12px;font-weight:900;color:#fff;background:#00c853;padding:5px 10px;border-radius:99px">⏱️ دورك</span></div><div style="width:200px;height:8px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden"><div id="bc-timer-bar" style="height:100%;width:100%;background:#00e676;transition:width 1s linear;border-radius:99px"></div></div></div>'
       + '<div style="display:flex;gap:6px"><button class="iconBtn" id="bc-home" style="width:44px;height:44px;padding:0;font-size:20px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer">🏠</button></div></div>'
       + '<div style="height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin:6px 0 10px"><i style="display:block;height:100%;background:linear-gradient(90deg,#00e676,#ffc107);border-radius:99px;transition:width .5s;width:'+Math.round(opened/cards.length*100)+'%"></i></div>'
       + '<div style="font-size:17px;font-weight:800;margin:2px 0 6px">تم كشف '+opened+' / '+cards.length+'</div>'
@@ -229,17 +231,17 @@
     // نفس سلوك الأصلية: الضغط على بطاقة + حالات الاختيار
     let pend = game.pending||null;
     // 2) البطاقة الكبيرة تبقى للقراءة قبل رسالة التفعيل: 2.8 ثانية تأخير
+    // مهم: لا نحفظ pendReadyNow() كقيمة ثابتة، نحسبها لحظة الضغطة، وإلا تبقى false للأبد
     let pendKey = pend ? (pend.kind+"|"+(pend.cardId||"")+"|"+pend.actor) : "";
     if(pend && pendKey!==_lastPendingKey){ _lastPendingKey=pendKey; _pendingDelayUntil=Date.now()+2800; }
     if(!pend) _lastPendingKey="";
-    let pendReady = !pend || Date.now()>=_pendingDelayUntil;
+    function pendReadyNow(){ return !pend || Date.now()>=_pendingDelayUntil; }
     root.querySelectorAll("[data-card]").forEach(el=>{
       el.onclick=()=>{
         let idx=parseInt(el.getAttribute("data-card"),10);
         let c=(game.cards||[])[idx]; if(!c) return;
         if(pend && pend.actor===myIndex && Date.now()<_pendingDelayUntil){ toast("⏳ اقرا البطاقة أولا..."); return; }
-        if(pend && !pendReady){ pendEl.textContent="📖 اقرا البطاقة..."; }
-      else if(pend && pend.actor===myIndex){
+        if(pend && pend.actor===myIndex){
           if(pend.kind==="replay"){ if(!c.opened){ toast("اختر بطاقة مكشوفة"); return; } sendSafe({type:"replay_choose",code:myCode,index:idx}); return; }
           if(pend.kind==="double"){
             if(c.opened){ toast("اختر بطاقة مغلقة"); return; }
@@ -262,6 +264,30 @@
       };
     });
     // اختيار اللاعب المستهدف: الضغط على بطاقة اللاعب
+    // إعادة التفعيل: البطاقات المكشوفة تبان بالأخضر + نافذة اختيار كبيرة
+    if(pend && pend.kind==="replay" && pend.actor===myIndex){
+      root.querySelectorAll("[data-card]").forEach(el=>{
+        let ii=parseInt(el.getAttribute("data-card"),10);
+        let cc=(game.cards||[])[ii];
+        if(cc && cc.opened){ el.style.outline="4px solid #00e676"; el.style.boxShadow="0 0 18px rgba(0,230,118,.7)"; el.style.cursor="pointer"; }
+      });
+      // نافذة اختيار البطاقة المكشوفة - باش ما تضطرش تضغط على البطاقة الصغيرة في الطاولة
+      let oldPicker=document.getElementById("bc-replay-picker");
+      if(!oldPicker && Date.now()>=_pendingDelayUntil){
+        let openedList=(game.cards||[]).map((cc,ii)=>({cc,ii})).filter(x=>x.cc.opened);
+        let picker=document.createElement("div"); picker.id="bc-replay-picker";
+        picker.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1700;display:flex;align-items:center;justify-content:center;padding:20px";
+        let items=openedList.map(x=>'<button data-replay-pick="'+x.ii+'" style="border:3px solid #00e676;border-radius:16px;padding:14px 10px;background:#fff;color:#111;cursor:pointer;min-width:92px"><div style="font-size:36px;line-height:1">'+(x.cc.icon||"⭐")+'</div><div style="font-size:12px;font-weight:800;margin-top:6px">'+(x.cc.label||x.cc.type)+'</div></button>').join("");
+        picker.innerHTML='<div style="background:#1e2a38;border-radius:22px;padding:22px;width:100%;max-width:360px;text-align:center;color:#fff"><div style="font-size:44px">♻️</div><div style="font-size:19px;font-weight:900;margin:6px 0">اختر بطاقة مكشوفة لإعادة تفعيلها</div><div style="color:#b0c4de;font-size:13px;margin-bottom:12px">اضغط على واحدة من البطاقات</div><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-height:320px;overflow-y:auto">'+items+'</div><button id="bc-replay-cancel" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;background:#455a64;color:#fff;margin-top:14px">❌ إلغاء</button></div>';
+        document.body.appendChild(picker);
+        picker.querySelectorAll("[data-replay-pick]").forEach(b=>{
+          b.onclick=()=>{ let idx=parseInt(b.getAttribute("data-replay-pick"),10); picker.remove(); sendSafe({type:"replay_choose",code:myCode,index:idx}); };
+        });
+        document.getElementById("bc-replay-cancel").onclick=()=>{ picker.remove(); sendSafe({type:"confirm_no",code:myCode}); toast("تم إلغاء إعادة التفعيل"); };
+      }
+    } else {
+      let oldPicker=document.getElementById("bc-replay-picker"); if(oldPicker) oldPicker.remove();
+    }
     // اختيار مزدوج: البطاقتين المكشوفتين يبانو بالأخضر باش تعرف واش تختار
     if(pend && pend.kind==="double_choose" && pend.picks){
       root.querySelectorAll("[data-card]").forEach(el=>{
@@ -283,7 +309,15 @@
         el.onclick=()=>{ if(Date.now()<_pendingDelayUntil){ toast("⏳ اقرا البطاقة أولا..."); return; } let t=parseInt(el.getAttribute("data-player-idx"),10); if(t===myIndex && pend.kind!=="exchangePlayers"){ toast("اختر لاعب آخر"); return; } sendSafe({type:"choose_target",code:myCode,target:t}); };
       });
     }
-    // 3) الوقت كيما في العادي: كبير + شريط تقدم + يبان عند صاحب الدور
+    // 3) الوقت كيما في العادي: ثابت في أعلى الشاشة باش يبان ديما حتى لو ضاق الـ header
+    let fixed=document.getElementById("bc-timer-fixed");
+    if(!fixed && !game.winner){
+      fixed=document.createElement("div"); fixed.id="bc-timer-fixed";
+      fixed.style.cssText="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:1800;background:rgba(0,0,0,.78);border:2px solid rgba(255,255,255,.35);border-radius:99px;padding:8px 18px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.5)";
+      fixed.innerHTML='<div id="bc-timer-fixed-num" style="font-size:24px;font-weight:900;color:#00e676;line-height:1">⏱️ 20</div><div style="width:130px;height:7px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden"><div id="bc-timer-fixed-bar" style="height:100%;width:100%;background:#00e676;transition:width 1s linear"></div></div><div id="bc-timer-fixed-label" style="font-size:11px;font-weight:800;color:#b0c4de">دور اللاعب</div>';
+      document.body.appendChild(fixed);
+    }
+    if(game.winner && fixed) fixed.remove();
     if(_timerInt) clearInterval(_timerInt);
     let timeEl=document.getElementById("bc-timer");
     let barEl=document.getElementById("bc-timer-bar");
@@ -292,7 +326,13 @@
       let remain=game.timeLeft;
       let total=20;
       let update=()=>{
-        if(!timeEl) return;
+        let fNum=document.getElementById("bc-timer-fixed-num");
+        let fBar=document.getElementById("bc-timer-fixed-bar");
+        let fLabel=document.getElementById("bc-timer-fixed-label");
+        if(fNum){ fNum.textContent="⏱️ "+remain; fNum.style.color=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; }
+        if(fBar){ fBar.style.width=Math.max(0,(remain/20*100))+"%"; fBar.style.background=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; }
+        if(fLabel){ fLabel.textContent=(myIndex===game.current)?"⏱️ دورك!":"دور: "+(game.names[game.current]||""); fLabel.style.color=(myIndex===game.current)?"#00e676":"#b0c4de"; }
+        if(!timeEl) { if(remain>0) remain--; return; }
         timeEl.textContent="⏱️ "+remain;
         timeEl.style.color=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676";
         timeEl.style.background=remain<=5?"rgba(255,82,82,.18)":"rgba(0,0,0,.35)";
@@ -302,21 +342,27 @@
       };
       update(); _timerInt=setInterval(update,1000);
     }
-    // نافذة التأكيد
-    if(pend && pend.actor===myIndex && pend.kind==="confirm" && pendReady){
+    // نافذة التأكيد - تظهر بعد 2.8 ثانية (بعد قراءة البطاقة الكبيرة)
+    if(pend && pend.actor===myIndex && pend.kind==="confirm"){
       let m=document.getElementById("bc-confirm-modal"); if(m) m.remove();
-      let mod=document.createElement("div"); mod.id="bc-confirm-modal";
+      // نأجل ظهور النافذة حتى تنتهي قراءة البطاقة الكبيرة
+      let waitMs=Math.max(0,_pendingDelayUntil-Date.now());
+      setTimeout(()=>{
+        if(!game || !game.pending || game.pending.kind!=="confirm" || game.pending.actor!==myIndex) return;
+        if(document.getElementById("bc-confirm-modal")) return;
+        let mod=document.createElement("div"); mod.id="bc-confirm-modal";
       mod.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px";
       mod.innerHTML='<div style="background:#1e2a38;border-radius:20px;padding:22px;width:100%;max-width:320px;text-align:center;color:#fff"><div style="font-size:48px">❓</div><div style="font-size:18px;font-weight:800;margin:8px 0">هل تريد تفعيل؟</div><div style="color:#b0c4de;font-size:14px">'+(game.lastMsg||"")+'</div><button id="bc-yes" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:14px">✅ نعم، فعّلها</button><button id="bc-no" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:#c62828;color:#fff;margin-top:8px">❌ لا، ألغيها</button></div>';
       document.body.appendChild(mod);
       document.getElementById("bc-yes").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_yes",code:myCode}); };
       document.getElementById("bc-no").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_no",code:myCode}); };
+      }, waitMs);
     } else { let m=document.getElementById("bc-confirm-modal"); if(m) m.remove(); }
-    if(pend && !pendReady){ let pe=document.getElementById("bc-pend-msg"); if(pe) pe.textContent="📖 اقرا البطاقة..."; }
+    if(pend && !pendReadyNow()){ let pe=document.getElementById("bc-pend-msg"); if(pe) pe.textContent="📖 اقرا البطاقة..."; }
     // رسالة الاختيار
     let pendEl=document.getElementById("bc-pend-msg");
     if(pendEl){
-      if(pend && !pendReady){ pendEl.textContent="📖 اقرا البطاقة..."; }
+      if(pend && !pendReadyNow()){ pendEl.textContent="📖 اقرا البطاقة..."; }
       else if(pend && pend.actor===myIndex){
         if(pend.kind==="replay") pendEl.textContent="♻️ اضغط على بطاقة مكشوفة لإعادة تفعيلها";
         else if(pend.kind==="double") pendEl.textContent="🃏 اضغط على بطاقتين مغلقتين (اخترت "+_doublePicks.length+" / 2)";
@@ -331,7 +377,7 @@
     let back=document.getElementById("bc-back-menu"); if(back) back.onclick=()=>{ gameStarted=false; game=null; sendSafe({type:"leave",code:myCode}); myCode=""; openMenu(); };
   }
 
-  function openMenu(){
+  function openMenu(){ let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove(); if(_timerInt) clearInterval(_timerInt);
     gameStarted=false; game=null;
     showOverlay("🌐 العب أونلاين",
       '<p style="color:#b0c4de;font-size:14px;margin:0 0 10px">اختر عدد اللاعبين أولًا، بعدها اختر طريقة اللعب.</p>'
@@ -388,7 +434,7 @@
     document.getElementById("bc-cancel").onclick=()=>{ sendSafe({type:"leave",code:myCode}); openMenu(); };
     document.getElementById("bc-start-btn").onclick=()=>{ if(playerCount<maxPlayers){ toast("مازال ناقص "+(maxPlayers-playerCount)+" لاعب"); return; } sendSafe({type:"start",code:myCode}); };
   }
-  function leaveRoom(){
+  function leaveRoom(){ let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove();
     gameStarted=false; game=null; myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1; _lastBigKey=""; _lastPendingKey=""; _pendingDelayUntil=0;
     try{ if(ws) ws.close(); ws=null; }catch(e){}
     // رجوع للصفحة الأولى الأصلية
