@@ -1,4 +1,4 @@
-// battle-online-v6.js - V11 - زر ابدأ يبقى داخل أونلاين، لا يرجع لمعاينة React المحلية
+// battle-online-v6.js - V12 - إصلاح الصفحة البيضاء + لعبة واحدة
 (function(){
   "use strict";
   const WS_URL = "wss://battle-cards-online-v2.onrender.com";
@@ -18,21 +18,19 @@
     try { localStorage.setItem("bc_player_name", myName); } catch(e){}
   }
 
-  // نخفي شاشة React المحلية التي تحتنا - هي التي فيها "معاينة محلية"
+  // V12: إخفاء آمن - نخفي فقط المربع الصغير تاع المعاينة، لا نخفي الصفحة
   function hideReactLocalModal(){
     try {
-      let all = document.querySelectorAll("div, section, dialog");
+      let all = document.querySelectorAll("div");
       all.forEach(function(el){
         let t = (el.textContent || "");
-        if(t.indexOf("معاينة محلية") !== -1 && t.length < 2000){
-          // هذا هو الـ Modal تاع React، نخفيه
-          let box = el;
-          for(let i=0;i<4;i++){
-            if(!box.parentElement) break;
-            box = box.parentElement;
-            if(box.style) box.style.display = "none";
-            if(box.textContent && box.textContent.indexOf("العب أونلاين") !== -1) break;
-          }
+        // نبحث فقط عن المربع الصغير الذي يحتوي النص بالضبط، وطوله صغير
+        if(t.indexOf("معاينة محلية") !== -1 && t.length < 800){
+          // نخفي هذا العنصر فقط، ولا نصعد للأب
+          if(el.style) el.style.display = "none";
+          // ونخفي أيضا أزرار "لعب أونلاين" و "لعب مع صديق" التي داخله إذا كانت موجودة
+          let btns = el.querySelectorAll("button");
+          btns.forEach(function(b){ b.style.display = "none"; });
         }
       });
     } catch(e){}
@@ -57,7 +55,7 @@
 
   function showOverlay(title, innerHTML){
     closeOverlay();
-    hideReactLocalModal();
+    // لا نخفي الصفحة هنا، نعرض شاشتنا فقط فوق الصفحة
     let o = document.createElement("div");
     o.id = "bc-online-overlay";
     o.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;touch-action:manipulation";
@@ -130,7 +128,6 @@
             toast("❌ " + (d.message || "الغرفة غير موجودة"));
             setTimeout(openJoin, 800);
           }
-          // إذا صاحبك ضغط ابدأ، ندخل نحن أيضًا لشاشة اللعبة، ولا نغلق الأونلاين
           if(type === "game_started"){
             gameStarted = true;
             toast("▶️ بدأت اللعبة!");
@@ -174,15 +171,14 @@
     }
   }
 
-  // شاشة اللعبة أونلاين - تبقى داخل الأونلاين، لا تخرج لـ React
   function openGameScreen(){
     gameStarted = true;
     showOverlay("🎮 لعبة أونلاين - بدأت!",
       '<p style="color:#ffc107;font-size:15px;font-weight:700;margin:0 0 6px">غرفة: ' + myCode + ' • ' + playerCount + ' / ' + maxPlayers + '</p>'
       + '<div style="background:rgba(255,255,255,.08);border-radius:14px;padding:12px;margin:10px 0;text-align:right;line-height:2">'
-      + (playerNames && playerNames.length ? playerNames.map(function(n,i){ return "<div>" + (i===0?"👑 ":"") + "✅ " + n + (n===myName ? " (أنت)" : "") + "</div>"; }).join("") : "<div>✅ " + myName + " (أنت)</div>")
+      + (playerNames && playerNames.length ? playerNames.map(function(n){ return "<div>✅ " + n + (n===myName ? " (أنت)" : "") + "</div>"; }).join("") : "<div>✅ " + myName + " (أنت)</div>")
       + '</div>'
-      + '<p style="color:#b0c4de;font-size:13px;line-height:1.7;margin:8px 0">أنت الآن داخل اللعبة أونلاين مع ' + playerNames.join(" و ") + '.<br>طاولة البطاقات ستظهر هنا في المرحلة القادمة، والآن الاتصال ثابت ولن تخرج لصفحة المعاينة المحلية.</p>'
+      + '<p style="color:#b0c4de;font-size:13px;line-height:1.7;margin:8px 0">أنت الآن داخل اللعبة أونلاين مع ' + (playerNames.join(" و ") || myName) + '.</p>'
       + '<button id="bc-leave-game" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:10px 0 0">🚪 مغادرة الغرفة</button>'
     );
     document.getElementById("bc-leave-game").onclick = function(){
@@ -268,7 +264,6 @@
     document.getElementById("bc-cancel").onclick = function(){ sendSafe({ type:"leave", code: myCode }); closeOverlay(); };
     document.getElementById("bc-start-btn").onclick = function(){
       if(playerCount < maxPlayers){ toast("مازال ناقص " + (maxPlayers - playerCount) + " لاعب"); return; }
-      // إصلاح V11: لا نغلق الأونلاين، ولا نضغط على زر React
       sendSafe({ type:"start", code: myCode });
       openGameScreen();
     };
@@ -278,12 +273,12 @@
     let btn = e.target && e.target.closest ? e.target.closest("button") : null;
     if(!btn) return;
     let txt = (btn.textContent || "").trim();
-    // نفتح أونلاين فقط من أزرار الصفحة الرئيسية، ليس من داخل الـ Modal المحلي
-    if(txt === "العب أونلاين" || txt.indexOf("🌐") !== -1 && txt.indexOf("العب أونلاين") !== -1){
+    // نفتح أونلاين فقط من زر الصفحة الرئيسية "العب أونلاين"
+    if(txt === "العب أونلاين" || txt.indexOf("العب أونلاين") !== -1 && txt.length < 30){
       e.preventDefault();
       setTimeout(openMenu, 80);
     }
   }
   document.addEventListener("click", handleOpen, false);
-  console.log("✅ Battle Online V11 - start stays inside online");
+  console.log("✅ Battle Online V12 - white page fixed");
 })();
