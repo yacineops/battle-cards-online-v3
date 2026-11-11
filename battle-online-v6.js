@@ -6,7 +6,7 @@
   let ws=null, myCode="", myName="";
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
   if(!myName) myName="اللاعب 1";
-  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false;
+  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false, _timerTotal=20;
 
   function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
   function toast(msg){
@@ -201,9 +201,8 @@
       let frontBg=c.type==="points"?((c.value||0)>0?"linear-gradient(135deg,#c8e6c9,#a5d6a7)":"linear-gradient(135deg,#ffcdd2,#ef9a9a)"):"linear-gradient(135deg,#fff3e0,#ffcc80)";
       return '<div data-card="'+i+'" class="card'+openedCls+'" style="height:auto;min-height:0;border-radius:10px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .45s;transform:'+(c.opened?"rotateY(180deg)":"none")+'">'
         + '<div class="face back" style="position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#263f59,#3a5a7c);border:2px solid #5a7d9c;font-size:20px;backface-visibility:hidden">🃏</div>'
-        + '<div class="face front" style="position:absolute;inset:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:'+frontBg+';color:#111;border:2px solid #fff;transform:rotateY(180deg);backface-visibility:hidden;overflow:hidden">'
-        + '<div style="font-size:28px">'+(c.icon||"⭐")+'</div>'
-        + (c.type!=="points"?'<div style="font-size:11px;font-weight:900;line-height:1.15;padding:0 4px">'+(c.label||"")+'</div>':"")
+        + '<div class="face front" style="position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+frontBg+';color:#111;border:2px solid #fff;transform:rotateY(180deg);backface-visibility:hidden;overflow:hidden">'
+        + '<div style="font-size:'+(c.type==="points"?"40px":"38px")+';font-weight:900;line-height:1;text-align:center">'+(c.icon||"⭐")+'</div>'
         + '</div></div>';
     }).join("");
     // نفس تخطيط domino-board الأصلي
@@ -218,8 +217,8 @@
       + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+(game.winner?("🏆 الفائز: "+game.winner):(myTurn?"⭐ دورك - اكشف بطاقة واحدة":"⏳ دور: "+(names[game.current]||"")))+'</div>'
       + '<style>.domino-board{--domino-thickness:74px;--domino-length:min(430px,calc(100vw - 16px),calc(100dvh - 230px))}</style>'
       + '<div class="domino-board" dir="ltr" style="flex:1 1 auto;display:grid;grid-template-areas:\'top top top\' \'left cards right\' \'bottom bottom bottom\';grid-template-columns:'+(names.length>=3?"58px":"0px")+' minmax(0,1fr) '+(names.length>=4?"58px":"0px")+';grid-template-rows:auto minmax(0,1fr) auto;gap:4px;margin:2px 0;min-height:0">'
-      + '<div style="grid-area:top;display:flex;justify-content:center;min-width:0">'+(names.length>1?playerHTML(1,"top"):"")+'</div>'
-      + '<div style="grid-area:left;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0">'+(names.length>2?playerHTML(2,"side"):"")+'</div>'
+      + '<div style="grid-area:top;display:flex;justify-content:center;min-width:0">'+(names.length>2?playerHTML(2,"top"):(names.length>1?playerHTML(1,"top"):""))+'</div>'
+      + '<div style="grid-area:left;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0">'+(names.length>2?playerHTML(1,"side"):"")+'</div>'
       + '<div style="grid-area:cards;min-width:0;display:flex"><div style="flex:1 1 auto;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(9,1fr);gap:5px;margin:0;min-height:0;min-width:0">'+cardsHTML+'</div></div>'
       + '<div style="grid-area:right;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0">'+(names.length>3?playerHTML(3,"side"):"")+'</div>'
       + '<div style="grid-area:bottom;display:flex;justify-content:center;min-width:0">'+playerHTML(0,"bottom")+'</div>'
@@ -277,7 +276,7 @@
         let openedList=(game.cards||[]).map((cc,ii)=>({cc,ii})).filter(x=>x.cc.opened);
         let picker=document.createElement("div"); picker.id="bc-replay-picker";
         picker.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1700;display:flex;align-items:center;justify-content:center;padding:20px";
-        let items=openedList.map(x=>'<button data-replay-pick="'+x.ii+'" style="border:3px solid #00e676;border-radius:16px;padding:14px 10px;background:#fff;color:#111;cursor:pointer;min-width:92px"><div style="font-size:36px;line-height:1">'+(x.cc.icon||"⭐")+'</div><div style="font-size:12px;font-weight:800;margin-top:6px">'+(x.cc.label||x.cc.type)+'</div></button>').join("");
+        let items=openedList.map(x=>'<button data-replay-pick="'+x.ii+'" style="border:3px solid #00e676;border-radius:16px;padding:16px 10px;background:#fff;color:#111;cursor:pointer;min-width:92px;min-height:92px;display:flex;align-items:center;justify-content:center"><div style="font-size:44px;line-height:1;font-weight:900">'+(x.cc.icon||"⭐")+'</div></button>').join("");
         picker.innerHTML='<div style="background:#1e2a38;border-radius:22px;padding:22px;width:100%;max-width:360px;text-align:center;color:#fff"><div style="font-size:44px">♻️</div><div style="font-size:19px;font-weight:900;margin:6px 0">اختر بطاقة مكشوفة لإعادة تفعيلها</div><div style="color:#b0c4de;font-size:13px;margin-bottom:12px">اضغط على واحدة من البطاقات</div><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-height:320px;overflow-y:auto">'+items+'</div><button id="bc-replay-cancel" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;background:#455a64;color:#fff;margin-top:14px">❌ إلغاء</button></div>';
         document.body.appendChild(picker);
         picker.querySelectorAll("[data-replay-pick]").forEach(b=>{
@@ -320,7 +319,7 @@
     }
     if(game.winner && fixed) fixed.remove();
     // نحفظ deadline من السيرفر و نخدم بحلقة واحدة مستقلة
-    if(game.timeLeft!=null && !game.winner){ _timerDeadline=Date.now()+(game.timeLeft*1000); }
+    if(game.timeLeft!=null && !game.winner){ _timerDeadline=Date.now()+(game.timeLeft*1000); _timerTotal=game.timeLeft; }
     if(!_timerLoopStarted){
       _timerLoopStarted=true;
       setInterval(()=>{
@@ -329,11 +328,11 @@
         let box=document.getElementById("bc-timer-fixed");
         if(!el || !box) return;
         if(!_timerDeadline){ el.textContent="⏱️ 20"; return; }
-        let remain=Math.max(0, Math.ceil((_timerDeadline-Date.now())/1000));
+        let totalSec=_timerTotal||20; let remain=Math.max(0, Math.ceil((_timerDeadline-Date.now())/1000));
         el.textContent="⏱️ "+remain;
         let col=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676";
         el.style.color=remain<=5?"#ff5252":"#fff";
-        if(bar){ bar.style.width=Math.max(0,(remain/20*100))+"%"; bar.style.background=col; }
+        if(bar){ bar.style.width=Math.max(0,(remain/totalSec*100))+"%"; bar.style.background=col; }
         if(box){ box.style.borderColor=remain<=5?"#ff5252":"rgba(255,255,255,.28)"; }
       }, 250);
     }
