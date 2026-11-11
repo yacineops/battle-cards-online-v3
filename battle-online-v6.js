@@ -202,22 +202,22 @@
       return '<div data-card="'+i+'" class="card'+openedCls+'" style="height:auto;min-height:0;border-radius:10px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .45s;transform:'+(c.opened?"rotateY(180deg)":"none")+'">'
         + '<div class="face back" style="position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#263f59,#3a5a7c);border:2px solid #5a7d9c;font-size:20px;backface-visibility:hidden">🃏</div>'
         + '<div class="face front" style="position:absolute;inset:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:'+frontBg+';color:#111;border:2px solid #fff;transform:rotateY(180deg);backface-visibility:hidden;overflow:hidden">'
-        + '<div style="font-size:18px">'+(c.icon||"⭐")+'</div>'
-        + (c.type!=="points"?'<div style="font-size:8px;font-weight:800;line-height:1.1;padding:0 3px">'+(c.label||"")+'</div>':"")
+        + '<div style="font-size:28px">'+(c.icon||"⭐")+'</div>'
+        + (c.type!=="points"?'<div style="font-size:11px;font-weight:900;line-height:1.15;padding:0 4px">'+(c.label||"")+'</div>':"")
         + '</div></div>';
     }).join("");
     // نفس تخطيط domino-board الأصلي
     let board='<div dir="rtl" style="min-height:100dvh;background:'+levelBg+';background-attachment:fixed;color:#fff;text-align:center;overflow-x:clip;box-sizing:border-box;font-family:system-ui,Tahoma,Arial,sans-serif">'
-      + '<div style="height:100dvh;max-height:100dvh;display:flex;flex-direction:column;padding:52px 10px 8px;overflow:hidden;position:relative;z-index:1;box-sizing:border-box">'
+      + '<div style="height:100dvh;max-height:100dvh;display:flex;flex-direction:column;padding:8px 10px 8px;overflow:hidden;position:relative;z-index:1;box-sizing:border-box">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:18px;font-weight:800;color:#ffdf6e">'+levelLabel+' • '+(game.direction===1?"➡️":"⬅️")+' • غرفة '+myCode+'</div>'
       + '<div></div>'
       + '<div style="display:flex;gap:6px"><button class="iconBtn" id="bc-home" style="width:44px;height:44px;padding:0;font-size:20px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer">🏠</button></div></div>'
       + '<div style="height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin:6px 0 10px"><i style="display:block;height:100%;background:linear-gradient(90deg,#00e676,#ffc107);border-radius:99px;transition:width .5s;width:'+Math.round(opened/cards.length*100)+'%"></i></div>'
-      + '<div style="font-size:17px;font-weight:800;margin:2px 0 6px">تم كشف '+opened+' / '+cards.length+'</div>'
-      + '<div id="bc-pend-msg" style="min-height:38px;margin:4px 0;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:center">'+(game.lastMsg||"")+'</div>'
+      + '' // نحينا جملة تم كشف - بلا فائدة، لربح المساحة
+      + '<div id="bc-pend-msg" style="min-height:30px;margin:2px 0;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:center">'+(game.lastMsg||"")+'</div>'
       + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+(game.winner?("🏆 الفائز: "+game.winner):(myTurn?"⭐ دورك - اكشف بطاقة واحدة":"⏳ دور: "+(names[game.current]||"")))+'</div>'
-      + '<style>.domino-board{--domino-thickness:58px;--domino-length:min(360px,calc(100vw - 20px),calc(100dvh - 320px))}</style>'
-      + '<div class="domino-board" dir="ltr" style="flex:1 1 auto;display:grid;grid-template-areas:\'top top top\' \'left cards right\' \'bottom bottom bottom\';grid-template-columns:'+(names.length>=3?"58px":"0px")+' minmax(0,1fr) '+(names.length>=4?"58px":"0px")+';grid-template-rows:auto minmax(0,1fr) auto;gap:6px;margin:4px 0;min-height:0">'
+      + '<style>.domino-board{--domino-thickness:74px;--domino-length:min(430px,calc(100vw - 16px),calc(100dvh - 230px))}</style>'
+      + '<div class="domino-board" dir="ltr" style="flex:1 1 auto;display:grid;grid-template-areas:\'top top top\' \'left cards right\' \'bottom bottom bottom\';grid-template-columns:'+(names.length>=3?"58px":"0px")+' minmax(0,1fr) '+(names.length>=4?"58px":"0px")+';grid-template-rows:auto minmax(0,1fr) auto;gap:4px;margin:2px 0;min-height:0">'
       + '<div style="grid-area:top;display:flex;justify-content:center;min-width:0">'+(names.length>1?playerHTML(1,"top"):"")+'</div>'
       + '<div style="grid-area:left;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0">'+(names.length>2?playerHTML(2,"side"):"")+'</div>'
       + '<div style="grid-area:cards;min-width:0;display:flex"><div style="flex:1 1 auto;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(9,1fr);gap:5px;margin:0;min-height:0;min-width:0">'+cardsHTML+'</div></div>'
@@ -313,8 +313,8 @@
     let fixed=document.getElementById("bc-timer-fixed");
     if(!fixed && !game.winner){
       fixed=document.createElement("div"); fixed.id="bc-timer-fixed";
-      fixed.style.cssText="position:fixed;top:0;left:0;right:0;z-index:1800;background:rgba(0,0,0,.85);border-bottom:2px solid rgba(255,255,255,.2);padding:6px 12px 7px;display:flex;align-items:center;justify-content:center;gap:10px";
-      fixed.innerHTML='<div id="bc-timer-fixed-num" style="font-size:22px;font-weight:900;color:#00e676;line-height:1;min-width:70px">⏱️ 20</div><div style="flex:1;max-width:220px;height:8px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden"><div id="bc-timer-fixed-bar" style="height:100%;width:100%;background:#00e676;transition:width 1s linear"></div></div><div id="bc-timer-fixed-label" style="font-size:12px;font-weight:800;color:#b0c4de;white-space:nowrap">دور اللاعب</div>';
+      fixed.style.cssText="position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:1800;width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,.78);border:3px solid #00e676;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.45)";
+      fixed.innerHTML='<div id="bc-timer-fixed-num" style="font-size:19px;font-weight:900;color:#fff;line-height:1">20</div>';
       document.body.appendChild(fixed);
     }
     if(game.winner && fixed) fixed.remove();
@@ -325,11 +325,9 @@
       let total=20;
       let update=()=>{
         let fNum=document.getElementById("bc-timer-fixed-num");
-        let fBar=document.getElementById("bc-timer-fixed-bar");
-        let fLabel=document.getElementById("bc-timer-fixed-label");
-        if(fNum){ fNum.textContent="⏱️ "+remain; fNum.style.color=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; }
-        if(fBar){ fBar.style.width=Math.max(0,(remain/20*100))+"%"; fBar.style.background=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; }
-        if(fLabel){ fLabel.textContent=(myIndex===game.current)?"⏱️ دورك!":"دور: "+(game.names[game.current]||""); fLabel.style.color=(myIndex===game.current)?"#00e676":"#b0c4de"; }
+        let fCircle=document.getElementById("bc-timer-fixed");
+        if(fNum){ fNum.textContent=remain; fNum.style.color="#fff"; }
+        if(fCircle){ let col=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676"; fCircle.style.borderColor=col; fCircle.style.boxShadow="0 0 0 3px "+col+"33, 0 4px 14px rgba(0,0,0,.45)"; }
         if(!timeEl) { if(remain>0) remain--; return; }
         timeEl.textContent="⏱️ "+remain;
         timeEl.style.color=remain<=5?"#ff5252":remain<=10?"#ffab00":"#00e676";
