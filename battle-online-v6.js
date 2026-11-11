@@ -6,7 +6,7 @@
   let ws=null, myCode="", myName="";
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
   if(!myName) myName="اللاعب 1";
-  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1;
+  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="";
 
   function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
   function toast(msg){
@@ -110,6 +110,35 @@
     else playSound("special");
   }
 
+  // ===== البطاقة الكبيرة كيما العادي بالضبط =====
+  // في العادي: كي تكشف بطاقة تكبر في الوسط 260x360، اضغط في أي مكان باش تكمل
+  function showBigCard(c){
+    if(!c) return;
+    let key=(c.id||"")+":"+(c.type||"")+":"+(c.value||"")+":"+(game&&game.lastMsg||"");
+    if(key===_lastBigKey) return;
+    _lastBigKey=key;
+    let oldEl=document.getElementById("bc-big-card");
+    if(oldEl) oldEl.remove();
+    let bg=c.type==="points"?((c.value||0)>0?"linear-gradient(160deg,#e8f5e9,#a5d6a7)":"linear-gradient(160deg,#ffebee,#ef9a9a)"):"linear-gradient(160deg,#fff3e0,#ffcc80)";
+    let title=c.type==="points"?((c.value||0)>0?"نقاط ذهبية! 🎉":"يا خسارة! 😬"):(c.label||"");
+    let sub=c.type==="points"?((c.value||0)>0?("حصلت على +"+c.value+" نقطة، أحسنت!"):("خسرت "+Math.abs(c.value||0)+" نقطة... ركز في الجاية")):(c.label||"");
+    let el=document.createElement("div");
+    el.id="bc-big-card";
+    el.className="bigCardOverlay";
+    el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1500;display:flex;align-items:center;justify-content:center;padding:20px";
+    el.innerHTML='<div class="bigCard" style="width:260px;height:360px;border-radius:24px;background:'+bg+';color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 4px #fff;animation:bigIn .55s;padding:18px;text-align:center;position:relative">'
+      + '<div style="font-size:92px;line-height:1">'+(c.icon||"⭐")+'</div>'
+      + (c.type==="points"?'<div style="font-size:52px;font-weight:900">'+(c.icon||"")+'</div>':"")
+      + '<div style="font-size:26px;font-weight:900">'+title+'</div>'
+      + '<div style="font-size:15px;color:#444;font-weight:600">'+sub+'</div>'
+      + '<div style="position:absolute;bottom:14px;font-size:12px;color:#777;font-weight:700">اضغط في أي مكان للمتابعة 👆</div></div>'
+      + '<style>@keyframes bigIn{0%{transform:scale(.2) rotate(-18deg);opacity:0}60%{transform:scale(1.12) rotate(3deg);opacity:1}100%{transform:scale(1)}}</style>';
+    el.onclick=()=>{ el.remove(); };
+    document.body.appendChild(el);
+    // كيما العادي: إذا ما ضغطش، تتسكر وحدها بعد 1.9 ثانية باش اللعب ما يحبسش
+    setTimeout(()=>{ if(document.getElementById("bc-big-card")===el) el.remove(); }, 1900);
+  }
+
   // ===== الطاولة الأصلية بالضبط =====
   // ننسخ نفس structure تاع index.html: domino-board + player domino-edge/side + card face back/front
   function playerHTML(idx, pos){
@@ -129,6 +158,7 @@
   }
   function renderGame(isOver){
     if(!game) return;
+    if(game.lastCard) showBigCard(game.lastCard);
     // نغلق overlay القائمة ونعرض اللعبة في نفس صفحة اللعبة، بلا overlay جديد
     closeOverlay();
     let root=document.getElementById("root");
