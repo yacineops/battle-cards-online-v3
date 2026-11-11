@@ -1,347 +1,228 @@
-// battle-online-v6.js - V15 - نفس شكل اللعبة الأصلية بالضبط + صوت + مؤثرات + أونلاين فقط
-(function(){
-  "use strict";
-  const WS_URL = "wss://battle-cards-online-v2.onrender.com";
-  let ws = null;
-  let myCode = "";
-  let myName = "";
-  try { myName = localStorage.getItem("bc_player_name") || ""; } catch(e){}
-  if(!myName) myName = "اللاعب 1";
-  let playerCount = 1, maxPlayers = 2, playerNames = [], joinTimer = null, gameStarted = false;
-  let game = null, myIndex = -1, lastShownCardId = -1;
-  // ===== الصوت الأصلي - نفس أصوات اللعبة الأصلية =====
-  let audioCtx = null, soundOn = true;
-  try{ soundOn = localStorage.getItem("bc_sound") !== "off"; }catch(e){}
-  let lastSoundAt = 0;
-  function playTone(freq, dur, type, vol, delay, toFreq){
-    if(!soundOn) return;
-    if(Date.now() < lastSoundAt && !delay) return;
-    try{
-      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-      if(audioCtx.state==="suspended") audioCtx.resume();
-      let t = audioCtx.currentTime + (delay||0);
-      let o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.connect(g); g.connect(audioCtx.destination);
-      o.frequency.setValueAtTime(freq, t);
-      if(toFreq) o.frequency.exponentialRampToValueAtTime(toFreq, t+dur);
-      o.type = type||"sine";
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol||0.12, t+0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, t+dur);
-      o.start(t); o.stop(t+dur+0.05);
-    }catch(e){}
+// server-final-v6.js - V11 FINAL - طاولة واحدة مشتركة + مزامنة البطاقة
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const WebSocket = require("ws");
+const PORT = process.env.PORT || 10000;
+const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml" };
+const server = http.createServer((req, res) => {
+  let urlPath = req.url.split("?")[0];
+  if (urlPath === "/") urlPath = "/index.html";
+  const filePath = path.join(__dirname, urlPath);
+  // منع الخروج من مجلد المشروع
+  if (!filePath.startsWith(__dirname)) { res.writeHead(403); return res.end("Forbidden"); }
+  fs.readFile(filePath, (err, data) => {
+    if (err) { res.writeHead(404); return res.end("Not found"); }
+    res.writeHead(200, { "Content-Type": mime[path.extname(filePath)] || "application/octet-stream" });
+    res.end(data);
+  });
+});
+const wss = new WebSocket.Server({ server });
+const rooms = new Map();
+const queues = { "2": [], "3": [], "4": [] };
+function send(ws, obj){ try{ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }catch(e){} }
+function broadcast(room, obj, exceptWs){ room.players.forEach((p)=>{ if(p!==exceptWs) send(p,obj); }); }
+function broadcastAll(room, obj){ room.players.forEach((p)=> send(p,obj)); }
+function makeCode(){ let c=""; do{ c=String(Math.floor(100000+Math.random()*900000)); }while(rooms.has(c)); return c; }
+function normCount(n){ n=parseInt(n,10); if(n===3) return 3; if(n===4) return 4; return 2; }
+function getNames(room){ return room.players.map((p)=> p._name || "اللاعب 1"); }
+function getScores(room){ return room.players.map((p)=> p._score || 0); }
+function removeFromAllQueues(ws){ ["2","3","4"].forEach((k)=>{ queues[k]=queues[k].filter((p)=>p!==ws); }); }
+function removeFromRoom(ws){
+  if(!ws._roomCode) return;
+  const room = rooms.get(ws._roomCode);
+  if(!room) return;
+  room.players = room.players.filter((p)=>p!==ws);
+  if(room.players.length===0) rooms.delete(ws._roomCode);
+  else {
+    if(room.game && room.game.current >= room.players.length) room.game.current = 0;
+    broadcast(room, { type:"room_update", code:room.code, players:room.players.length, count:room.players.length, maxPlayers:room.maxPlayers, names:getNames(room) });
+    broadcast(room, { type:"player_left", code:room.code, players:room.players.length, maxPlayers:room.maxPlayers, names:getNames(room) });
+    if(room.game) broadcastAll(room, { type:"game_state", code:room.code, game: publicGame(room) });
   }
-  function playSound(kind){
-    if(!soundOn) return;
-    if(kind==="flip") playTone(300,0.07,"sine",0.08,0,600);
-    else if(kind==="positive"){ playTone(523,0.12,"sine",0.12); playTone(784,0.18,"sine",0.14,0.09); }
-    else if(kind==="negative"){ playTone(220,0.2,"sawtooth",0.08); playTone(150,0.25,"sawtooth",0.08,0.1); }
-    else if(kind==="special"){ playTone(880,0.1,"triangle",0.14); playTone(1174,0.16,"triangle",0.14,0.08); }
-    else if(kind==="win"){ [523,659,784,1046,784,1046,1318].forEach(function(f,i){ playTone(f,0.22,"triangle",0.13,i*0.13); }); }
-    else if(kind==="bomb"){ playTone(150,0.4,"sawtooth",0.12,0,35); try{navigator.vibrate&&navigator.vibrate([80,40,80]);}catch(e){} }
-    else playTone(500,0.12);
+  ws._roomCode=null; ws._score=0;
+}
+// ---- توليد طاولة 45 بطاقة - نفس توزيع اللعبة الأصلية (مستوى 1) ----
+let _id = 1;
+function card(type, value, amount, label, icon){ return { id:_id++, type, value: value||0, amount: amount||0, label: label||"", icon: icon||"", opened:false }; }
+function buildDeck(){
+  _id = 1;
+  let deck = [];
+  // نقاط: نفس توزيع الأصلية
+  const pts = [1,1,1,3,3,3,5,5,5,10,10,10,-2,-2,-2,-5,-5,-5,-10,-10];
+  pts.forEach(v=> deck.push(card("points", v, 0, v>0?("نقاط +"+v):("نقاط "+v), v>0?("+"+v):(""+v))));
+  const specials = [
+    ["nextLevel",0,0,"الانتقال للمستوى التالي","🚪"],
+    ["reverse",0,0,"قلب الاتجاه","🔄"],["reverse",0,0,"قلب الاتجاه","🔄"],
+    ["skip",0,0,"تخطي اللاعب","⏭️"],["skip",0,0,"تخطي اللاعب","⏭️"],
+    ["steal",0,3,"سرقة 3 نقاط","💰"],["steal",0,3,"سرقة 3 نقاط","💰"],
+    ["shield",0,0,"درع النقاط","🛡️"],["shield",0,0,"درع النقاط","🛡️"],
+    ["replay",0,0,"إعادة التفعيل","♻️"],
+    ["bomb",0,3,"خصم 3 نقاط","💣"],["bomb",0,3,"خصم 3 نقاط","💣"],
+    ["shuffle",0,0,"إعادة قلب البطاقات","🔄"],
+    ["reset",0,0,"تصفير الجميع","🧹"],
+    ["doubleChoice",0,0,"اختيار مزدوج","🃏"],
+    ["exchange",0,0,"تبادل النقاط","🔃"],
+    ["resetShield",0,0,"حماية الرصيد","🔐"],
+    ["points",7,0,"نقاط +7","+7"],["points",4,0,"نقاط +4","+4"],
+    ["resetPlayer",0,0,"تصفير لاعب","💥"],
+    ["exchangePlayers",0,0,"تبادل لاعبين","🔄"],
+    ["bombShield",0,0,"درع القنبلة","🛡️"],
+    ["stealShield",0,0,"درع السرقة","🛡️"],
+    ["reflect",0,0,"عكس الهجوم","🪞"],
+    ["doubleSelf",0,0,"ضاعف رصيدك","✖️2"],
+    ["doubleTarget",0,0,"مضاعفة لاعب","🎯"],
+  ];
+  specials.forEach(s=> deck.push(card(s[0], s[1], s[2], s[3], s[4])));
+  while(deck.length < 45) deck.push(card("points", [1,3,5,-2][deck.length%4], 0, "", ""));
+  deck = deck.slice(0,45);
+  for(let i=deck.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
+  return deck;
+}
+function publicGame(room){
+  const g = room.game;
+  if(!g) return null;
+  return { cards: g.cards, scores: getScores(room), names: getNames(room), level: g.level, direction: g.direction, current: g.current, started: true, openedCount: g.cards.filter(c=>c.opened).length, lastCard: g.lastCard || null, lastMsg: g.lastMsg || "", winner: g.winner || null };
+}
+function nextTurn(room, steps){
+  const g = room.game; if(!g) return;
+  let n = room.players.length; if(!n) return;
+  let cur = g.current;
+  for(let i=0;i<steps;i++){ cur = (cur + g.direction + n) % n; }
+  g.current = cur;
+}
+function tryMatch(maxPlayers){
+  const q = queues[String(maxPlayers)];
+  while(q.length >= maxPlayers){
+    const players=[];
+    while(players.length < maxPlayers && q.length>0){ const p=q.shift(); if(p.readyState===1) players.push(p); }
+    if(players.length < maxPlayers){ players.forEach((p)=> q.unshift(p)); break; }
+    const code = makeCode();
+    const room = { code, maxPlayers, players, game:null };
+    rooms.set(code, room);
+    players.forEach((p)=>{ p._roomCode=code; p._score=0; });
+    const names = getNames(room);
+    players.forEach((p)=> send(p, { type:"match_found", code, players:players.length, count:players.length, maxPlayers, names }));
+    players.forEach((p)=> send(p, { type:"joined", code, players:players.length, count:players.length, maxPlayers, names }));
+    console.log("MATCH " + maxPlayers + ":", code, names.join(", "));
   }
-  // ===== المؤثرات الأصلية =====
-  function confetti(n){
-    n = n||24;
-    let wrap = document.getElementById("bc-confetti");
-    if(!wrap){ wrap=document.createElement("div"); wrap.id="bc-confetti"; wrap.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:99998;overflow:hidden"; document.body.appendChild(wrap); }
-    let emojis = ["🎉","⭐","✨","🎊","💰","🏆"];
-    for(let i=0;i<n;i++){
-      let s=document.createElement("div");
-      s.textContent = emojis[i%emojis.length];
-      s.style.cssText="position:absolute;top:-10px;left:"+(Math.random()*100)+"%;font-size:22px;animation:bcFall "+(1.8+Math.random()*1.5)+"s linear forwards";
-      wrap.appendChild(s);
-      setTimeout(function(){ s.remove(); }, 3600);
+}
+function startGame(room){
+  room.players.forEach(p=> p._score = 0);
+  room.game = { cards: buildDeck(), level:1, direction:1, current:0, lastCard:null, lastMsg:"بدأت اللعبة - دور " + getNames(room)[0], winner:null };
+  broadcastAll(room, { type:"game_started", code:room.code, maxPlayers:room.maxPlayers, names:getNames(room), game: publicGame(room) });
+}
+wss.on("connection", (ws)=>{
+  ws._roomCode=null; ws._name="اللاعب 1"; ws._score=0;
+  ws.on("message", (raw)=>{
+    let d; try{ d=JSON.parse(raw.toString()); }catch(e){ return; }
+    const type=(d.type||"").toLowerCase();
+    if(d.name && String(d.name).trim()){ ws._name = String(d.name).trim().slice(0,20); }
+    const wanted = normCount(d.maxPlayers || d.playerCount || d.count || d.players || 2);
+    if(type==="create" || type==="create_room"){
+      removeFromAllQueues(ws); removeFromRoom(ws);
+      const maxPlayers=wanted; const code=makeCode();
+      const room={ code, maxPlayers, players:[ws], game:null };
+      rooms.set(code, room); ws._roomCode=code; ws._score=0;
+      send(ws, { type:"room_created", code, players:1, count:1, maxPlayers, names:getNames(room) });
+      return;
     }
-  }
-  function particles(emoji, n){
-    n=n||8;
-    let wrap=document.getElementById("bc-particles");
-    if(!wrap){ wrap=document.createElement("div"); wrap.id="bc-particles"; wrap.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:99998"; document.body.appendChild(wrap); }
-    for(let i=0;i<n;i++){
-      let a=Math.random()*Math.PI*2, d=80+Math.random()*120;
-      let s=document.createElement("div");
-      s.textContent=emoji;
-      s.style.cssText="position:fixed;left:50vw;top:42vh;font-size:26px;transition:all 1s ease-out";
-      wrap.appendChild(s);
-      requestAnimationFrame(function(){ s.style.transform="translate("+Math.cos(a)*d+"px,"+Math.sin(a)*d+"px) scale(.2)"; s.style.opacity="0"; });
-      setTimeout(function(){ s.remove(); }, 1100);
+    if(type==="join"){
+      const code=String(d.code||d.roomCode||"").trim();
+      removeFromAllQueues(ws);
+      const room=rooms.get(code);
+      if(!room){ send(ws,{ type:"error", message:"الغرفة غير موجودة" }); return; }
+      if(room.players.length >= room.maxPlayers){ send(ws,{ type:"error", message:"الغرفة ممتلئة" }); return; }
+      if(room.game){ send(ws,{ type:"error", message:"اللعبة بدأت، لا يمكن الدخول الآن" }); return; }
+      removeFromRoom(ws);
+      room.players.push(ws); ws._roomCode=code; ws._score=0;
+      const names=getNames(room);
+      send(ws, { type:"joined", code, players:room.players.length, count:room.players.length, maxPlayers:room.maxPlayers, names });
+      broadcast(room, { type:"player_joined", code, players:room.players.length, count:room.players.length, maxPlayers:room.maxPlayers, names }, ws);
+      return;
     }
-  }
-  // حقن أنيميشن السقوط مرة واحدة
-  if(!document.getElementById("bc-anim-style")){
-    let st=document.createElement("style"); st.id="bc-anim-style";
-    st.textContent="@keyframes bcFall{to{transform:translateY(110vh) rotate(720deg);opacity:.8}} @keyframes bcBigIn{0%{transform:scale(.2) rotate(-18deg);opacity:0}60%{transform:scale(1.12) rotate(3deg);opacity:1}100%{transform:scale(1)}} @keyframes bcPop{0%{transform:scale(.92)}50%{transform:scale(1.05)}100%{transform:scale(1)}}";
-    document.head.appendChild(st);
-  }
-  function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
-  function toast(msg){
-    let t=document.getElementById("bc-online-toast");
-    if(!t){ t=document.createElement("div"); t.id="bc-online-toast"; t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:99px;font-weight:700;z-index:99999;max-width:92%;text-align:center;font-size:14px"; document.body.appendChild(t); }
-    t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(function(){t.style.display="none";},2400);
-  }
-  function closeOverlay(){ let o=document.getElementById("bc-online-overlay"); if(o) o.remove(); }
-  function closeReactModal(){
-    try{
-      let backs=Array.from(document.querySelectorAll("button")).filter(function(b){ return (b.textContent||"").trim().indexOf("رجوع")!==-1 && b.offsetParent!==null; });
-      if(backs.length) backs[backs.length-1].click();
-      if(document.body&&document.body.style) document.body.style.display="";
-    }catch(e){}
-  }
-  function showOverlay(title, innerHTML){
-    closeOverlay();
-    let o=document.createElement("div"); o.id="bc-online-overlay";
-    // نفس خلفية اللعبة الأصلية
-    o.style.cssText="position:fixed;inset:0;background:linear-gradient(160deg,#0f2027,#203a43,#2c5364);z-index:10000;display:flex;flex-direction:column;overflow:hidden;color:#fff;font-family:system-ui,Tahoma,Arial,sans-serif;direction:rtl";
-    o.innerHTML='<div style="flex:1;display:flex;flex-direction:column;padding:8px 10px;overflow:hidden;box-sizing:border-box;max-width:720px;width:100%;margin:0 auto">'+innerHTML+'</div>';
-    o.addEventListener("click", function(e){ if(e.target===o) e.preventDefault(); });
-    document.body.appendChild(o);
-    return o;
-  }
-  // شاشات القائمة بنفس ستايل الأصلية
-  function menuOverlay(title, innerHTML){
-    closeOverlay();
-    let o=document.createElement("div"); o.id="bc-online-overlay";
-    o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto";
-    o.innerHTML='<div id="bc-box" style="background:#1e2a38;border-radius:20px;padding:22px;width:100%;max-width:360px;text-align:center;color:#fff"><h3 style="margin:0 0 8px;font-size:20px">'+title+'</h3>'+innerHTML+'</div>';
-    document.body.appendChild(o); return o;
-  }
-  function btn(c1,c2,txt){ return "width:100%;border:0;border-radius:14px;padding:13px 18px;font-size:16px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,"+c1+","+c2+");color:"+txt+";box-shadow:0 4px 12px rgba(0,0,0,.3);margin:5px"; }
-  function countSelector(){
-    return '<div style="margin:10px 0 6px"><div style="font-size:13px;color:#b0c4de;margin-bottom:6px">👥 اختر عدد اللاعبين</div><div style="display:flex;gap:8px;justify-content:center">'
-      + [2,3,4].map(function(n){ let a=(n===maxPlayers); return '<button data-count="'+n+'" class="bc-count-btn" style="flex:1;border:0;border-radius:12px;padding:12px;font-size:16px;font-weight:800;cursor:pointer;background:'+(a?"linear-gradient(135deg,#ff8f00,#ffc107);color:#222":"rgba(255,255,255,.15);color:#fff")+'">👥 '+n+'</button>'; }).join("")
-      + '</div><div id="bc-count-label" style="font-size:12px;color:#ffc107;margin-top:6px">المختار الآن: '+maxPlayers+' لاعبين</div></div>';
-  }
-  function bindCountSelector(){
-    document.querySelectorAll(".bc-count-btn").forEach(function(b){
-      b.onclick=function(){
-        maxPlayers=parseInt(b.getAttribute("data-count"),10)||2;
-        document.querySelectorAll(".bc-count-btn").forEach(function(x){ let n=parseInt(x.getAttribute("data-count"),10); if(n===maxPlayers){x.style.background="linear-gradient(135deg,#ff8f00,#ffc107)";x.style.color="#222";} else {x.style.background="rgba(255,255,255,.15)";x.style.color="#fff";} });
-        let l=document.getElementById("bc-count-label"); if(l) l.textContent="المختار الآن: "+maxPlayers+" لاعبين";
-      };
-    });
-  }
-  function connect(){
-    return new Promise(function(resolve, reject){
-      if(ws && ws.readyState===1) return resolve(ws);
-      try{ if(ws) ws.close(); }catch(e){}
-      ws=new WebSocket(WS_URL);
-      ws.onopen=function(){ resolve(ws); };
-      ws.onerror=function(){ reject(new Error("WS")); };
-      ws.onclose=function(){ if(gameStarted) toast("⚠️ انقطع الاتصال بالسيرفر"); };
-      ws.onmessage=function(ev){
-        try{
-          let d=JSON.parse(ev.data); let type=(d.type||"").toLowerCase();
-          if(d.maxPlayers) maxPlayers=parseInt(d.maxPlayers,10)||maxPlayers;
-          if(d.names) playerNames=d.names;
-          if(d.game) game=d.game;
-          if(type==="room_created"){ if(d.code) myCode=String(d.code); playerCount=1; myIndex=0; updateWaiting(); }
-          if(type==="joined"||type==="player_joined"||type==="room_update"||type==="match_found"){
-            if(d.code) myCode=String(d.code);
-            if(typeof d.players==="number") playerCount=d.players;
-            if(Array.isArray(d.players)) playerCount=d.players.length;
-            if(typeof d.count==="number") playerCount=d.count;
-            clearTimeout(joinTimer);
-            if(playerNames) myIndex=playerNames.indexOf(myName);
-            if(type==="match_found"){ toast("🎉 اكتمل العدد! "+playerCount+" / "+maxPlayers); openWaiting(); }
-            else if(!gameStarted) updateWaiting();
-          }
-          if(type==="error"){ clearTimeout(joinTimer); toast("❌ "+(d.message||"الغرفة غير موجودة")); if(!gameStarted) setTimeout(openJoin,800); }
-          if(type==="game_started"||type==="card_revealed"||type==="game_state"){
-            gameStarted=true; if(d.game) game=d.game; if(playerNames) myIndex=playerNames.indexOf(myName);
-            // صوت + مؤثر البطاقة الجديدة
-            if(game && game.lastCard && game.lastCard.id!==lastShownCardId){
-              lastShownCardId=game.lastCard.id;
-              let c=game.lastCard;
-              if(c.type==="points") playSound(c.value>0?"positive":"negative");
-              else if(c.type==="bomb") playSound("bomb");
-              else playSound("special");
-              if(c.type==="points" && c.value>=10){ confetti(10); particles("⭐",8); }
-              if(c.type==="bomb") particles("💣",10);
-              if(c.type==="steal") particles("💰",8);
-              showBigCard(c);
-            } else { playSound("flip"); }
-            renderGame();
-          }
-          if(type==="game_over"){
-            if(d.game) game=d.game;
-            playSound("win"); confetti(50); renderGame(true);
-          }
-          if(type==="player_left"){
-            playerCount=Math.max(1,playerCount-1);
-            if(!gameStarted) updateWaiting(); else if(game) renderGame();
-          }
-        }catch(e){}
-      };
-    });
-  }
-  function sendSafe(o){ try{ if(ws&&ws.readyState===1){ ws.send(JSON.stringify(o)); return true; } }catch(e){} return false; }
-  function updateWaiting(){
-    let ce=document.getElementById("bc-code"), co=document.getElementById("bc-count"), ne=document.getElementById("bc-names"), sb=document.getElementById("bc-start-btn");
-    if(ce) ce.textContent=myCode||"••••••";
-    if(co) co.textContent="👥 اللاعبون: "+playerCount+" / "+maxPlayers;
-    if(ne){ ne.innerHTML = (playerNames&&playerNames.length) ? playerNames.map(function(n){return "<div>✅ "+n+(n===myName?" (أنت)":"")+"</div>";}).join("") : "<div>✅ "+myName+" (أنت)</div>"; }
-    if(sb){ if(playerCount>=maxPlayers){ sb.disabled=false; sb.style.opacity="1"; sb.textContent="▶️ ابدأ اللعب ("+playerCount+" / "+maxPlayers+")"; } else { sb.disabled=true; sb.style.opacity="0.5"; sb.textContent="⏳ نستنى "+(maxPlayers-playerCount)+" لاعب... ("+playerCount+" / "+maxPlayers+")"; } }
-  }
-  // ===== البطاقة الكبيرة - نفس الأصلية =====
-  function showBigCard(c){
-    let old=document.getElementById("bc-bigcard"); if(old) old.remove();
-    let o=document.createElement("div"); o.id="bc-bigcard";
-    o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px";
-    let bg = c.type==="points" ? ((c.value||0)>0?"linear-gradient(160deg,#e8f5e9,#a5d6a7)":"linear-gradient(160deg,#ffebee,#ef9a9a)") : "linear-gradient(160deg,#fff3e0,#ffcc80)";
-    o.innerHTML='<div style="width:260px;height:360px;border-radius:24px;background:'+bg+';color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 4px #fff;animation:bcBigIn .55s;padding:18px;text-align:center">'
-      +'<div style="font-size:92px;line-height:1">'+(c.icon||"⭐")+'</div>'
-      +(c.type==="points" ? '<div style="font-size:52px;font-weight:900">'+(c.value>0?"+":"")+c.value+'</div>' : '')
-      +'<div style="font-size:26px;font-weight:900">'+(c.type==="points" ? (c.value>0?"نقاط ذهبية! 🎉":"يا خسارة! 😬") : (c.label||""))+'</div>'
-      +'<div style="font-size:15px;color:#444;font-weight:600">'+(c.type==="points" ? (c.value>0?("حصلت على +"+c.value+" نقطة، أحسنت!"):("خسرت "+Math.abs(c.value)+" نقطة... ركز في الجاية")) : (c.label||""))+'</div>'
-      +'<div style="position:absolute;bottom:14px;font-size:12px;color:#777;font-weight:700">اضغط في أي مكان للمتابعة 👆</div></div>';
-    o.onclick=function(){ o.remove(); };
-    document.body.appendChild(o);
-    setTimeout(function(){ o.remove(); }, 1900);
-  }
-  // ===== الطاولة - نفس شكل الأصلية: لاعب تحت، لاعب فوق، لاعب يمين/يسار، طاولة 5×9 =====
-  function playerCard(i, pos){
-    let names=game.names||playerNames, scores=game.scores||[];
-    let n=names[i]||("اللاعب "+(i+1)), sc=scores[i]||0;
-    let isCur=(i===game.current), isMe=(i===myIndex);
-    let avatars=["🧸","🤖","🦸","🦁"];
-    let base='background:rgba(255,255,255,.08);border:2px solid '+(isCur?"#00e676":"rgba(255,255,255,.15)")+';border-radius:12px;box-sizing:border-box;position:relative;';
-    if(pos==="side"){
-      return '<div style="'+base+'width:58px;height:360px;align-self:center;justify-self:center;padding:10px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">'
-        +'<div style="font-size:28px;line-height:1">'+avatars[i%4]+'</div>'
-        +'<div style="font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center">'+n+'</div>'
-        +'<div style="font-size:16px;font-weight:900;color:#ffdf6e;text-align:center;line-height:1.1">'+sc+' نقطة</div>'
-        +(isCur?'<div style="background:#00e676;color:#06281a;font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;white-space:nowrap">⭐ دورك</div>':'')
-        +'</div>';
+    if(type==="quick_play" || type==="find_match" || type==="search" || type==="matchmaking"){
+      removeFromRoom(ws); removeFromAllQueues(ws);
+      const maxPlayers=wanted;
+      const q=queues[String(maxPlayers)];
+      if(!q.includes(ws)) q.push(ws);
+      send(ws, { type:"searching", maxPlayers, message:"جاري البحث..." });
+      tryMatch(maxPlayers);
+      return;
     }
-    return '<div style="'+base+'width:min(360px,calc(100vw - 20px));height:58px;justify-self:center;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 10px;flex-wrap:nowrap;overflow:hidden">'
-      +'<div style="font-size:28px;line-height:1">'+avatars[i%4]+'</div>'
-      +'<div style="text-align:right;min-width:0"><div style="font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+n+'</div><div style="font-size:10px;min-height:14px;line-height:1">'+(isMe?"أنت":"")+'</div></div>'
-      +'<div style="font-size:16px;font-weight:900;color:#ffdf6e;white-space:nowrap">'+sc+' نقطة</div>'
-      +(isCur?'<div style="background:#00e676;color:#06281a;font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;white-space:nowrap">⭐ دورك</div>':'')
-      +'</div>';
-  }
-  function renderGame(isOver){
-    if(!game) return;
-    let names=game.names||playerNames, scores=game.scores||[], cards=game.cards||[];
-    let opened=cards.filter(function(c){return c.opened;}).length;
-    let pct=cards.length?Math.round(opened/cards.length*100):0;
-    let myTurn=(game.current===myIndex);
-    let md = game.level===1?"🥉 المستوى الأول":game.level===2?"🥈 المستوى الثاني":"🥇 المستوى الثالث";
-    let levelBg = game.level===1?"linear-gradient(160deg,#0f2027,#203a43,#2c5364)":game.level===2?"linear-gradient(160deg,#2a0a0a,#5a1a1a,#8b2a2a)":"linear-gradient(160deg,#1a0a2a,#3a1a5a,#5a2a8b)";
-    // نغير خلفية الأوفيرلاي للمستوى مثل الأصلية
-    let overlay=document.getElementById("bc-online-overlay");
-    let cardsHTML=cards.map(function(c,i){
-      if(c.opened){
-        let bg=c.type==="points"?((c.value||0)>0?"linear-gradient(135deg,#c8e6c9,#a5d6a7)":"linear-gradient(135deg,#ffcdd2,#ef9a9a)"):"linear-gradient(135deg,#fff3e0,#ffcc80)";
-        return '<div style="border-radius:10px;position:relative;transform:rotateY(180deg);background:'+bg+';color:#111;border:2px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;min-height:0"><div style="font-size:18px">'+(c.icon||"⭐")+'</div>'+(c.type!=="points"?'<div style="font-size:8px;font-weight:800;line-height:1.1;padding:0 3px">'+(c.label||"")+'</div>':'')+'</div>';
+    if(type==="cancel_search" || type==="stop_search"){ removeFromAllQueues(ws); send(ws,{ type:"search_cancelled" }); return; }
+    if(type==="start"){
+      const room=rooms.get(ws._roomCode);
+      if(!room) return;
+      if(room.players.length < room.maxPlayers){ send(ws,{ type:"error", message:"مازال ناقص لاعبين" }); return; }
+      if(room.game){ send(ws,{ type:"game_started", code:room.code, game: publicGame(room) }); return; }
+      startGame(room);
+      return;
+    }
+    if(type==="leave"){ removeFromAllQueues(ws); removeFromRoom(ws); send(ws,{ type:"left" }); return; }
+    // ---- اللعب: كشف بطاقة واحدة ----
+    if(type==="play_card" || type==="move" || type==="game"){
+      const room=rooms.get(ws._roomCode);
+      if(!room || !room.game) return;
+      const g = room.game;
+      if(g.winner) return;
+      const myIdx = room.players.indexOf(ws);
+      if(myIdx === -1) return;
+      if(myIdx !== g.current){ send(ws,{ type:"error", message:"مش دورك" }); return; }
+      const idx = parseInt(d.index ?? d.cardIndex ?? -1, 10);
+      if(isNaN(idx) || idx<0 || idx>=g.cards.length) return;
+      const c = g.cards[idx];
+      if(c.opened){ send(ws,{ type:"error", message:"البطاقة مكشوفة" }); return; }
+      c.opened = true;
+      g.lastCard = c;
+      let msg = "";
+      let steps = 1;
+      // تطبيق النقاط مباشرة في السيرفر - نفس مبدأ اللعبة
+      if(c.type === "points"){
+        ws._score = (ws._score||0) + (c.value||0);
+        msg = c.value>0 ? (ws._name + " حصل على +" + c.value + " نقطة 🎉") : (ws._name + " خسر " + Math.abs(c.value) + " نقطة 😬");
+      } else if(c.type === "reverse"){
+        g.direction = -g.direction;
+        msg = "🔄 " + ws._name + " قلب اتجاه اللعب";
+      } else if(c.type === "skip"){
+        steps = 2; msg = "⏭️ " + ws._name + " تخطى اللاعب التالي";
+      } else if(c.type === "bomb"){
+        ws._score = (ws._score||0) - 3;
+        msg = "💣 " + ws._name + " خسر 3 نقاط بالقنبلة";
+      } else if(c.type === "steal"){
+        // سرقة 3 من اللاعب التالي إن أمكن
+        let targetIdx = (g.current + g.direction + room.players.length) % room.players.length;
+        let target = room.players[targetIdx];
+        let take = Math.min(3, Math.max(0, target._score||0));
+        target._score = (target._score||0) - take;
+        ws._score = (ws._score||0) + take;
+        msg = "💰 " + ws._name + " سرق " + take + " نقطة من " + (target._name||"");
+      } else if(c.type === "doubleSelf"){
+        ws._score = (ws._score||0) * 2;
+        msg = "✖️2 " + ws._name + " ضاعف رصيده";
+      } else if(c.type === "reset"){
+        room.players.forEach(p=> p._score = 0);
+        msg = "🧹 تم تصفير الجميع";
+      } else {
+        msg = "✨ " + ws._name + " كشف: " + (c.label || c.type);
       }
-      return '<div data-card="'+i+'" class="bc-card-btn" style="border-radius:10px;position:relative;cursor:'+(myTurn?"pointer":"not-allowed")+';background:linear-gradient(135deg,#263f59,#3a5a7c);border:2px solid #5a7d9c;display:flex;align-items:center;justify-content:center;font-size:20px;min-height:0">🃏</div>';
-    }).join("");
-    // توزيع اللاعبين مثل الأصلية: 0 تحت، 1 فوق، 2 يسار، 3 يمين
-    let topP = names.length>1 ? playerCard(1,"top") : '<div></div>';
-    let leftP = names.length>2 ? playerCard(2,"side") : '<div></div>';
-    let rightP = names.length>3 ? playerCard(3,"side") : '<div></div>';
-    let bottomP = playerCard(0,"bottom");
-    showOverlay("",
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:18px;font-weight:800;color:#ffdf6e">'+md+' • '+(game.direction===1?"➡️":"⬅️")+'</div>'
-      +'<div style="display:flex;gap:6px"><button id="bc-sound" style="width:44px;height:44px;padding:0;font-size:20px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">'+(soundOn?"🔊":"🔇")+'</button>'
-      +'<button id="bc-home" style="width:44px;height:44px;padding:0;font-size:20px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">🏠</button></div></div>'
-      +'<div style="height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin:6px 0 10px"><i style="display:block;height:100%;background:linear-gradient(90deg,#00e676,#ffc107);border-radius:99px;transition:width .5s;width:'+pct+'%"></i></div>'
-      +'<div style="font-size:17px;font-weight:800;margin:2px 0 6px">غرفة: '+myCode+' • تم كشف '+opened+' / '+cards.length+'</div>'
-      +(game.lastMsg?'<div style="min-height:38px;margin:4px 0;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:center">'+game.lastMsg+'</div>':'')
-      +(myTurn && !isOver ? '<div style="font-size:13px;font-weight:800;color:#ff9800;margin-bottom:4px">🎯 دورك - اضغط على بطاقة</div>' : (!isOver ? '<div style="font-size:13px;font-weight:800;color:#b0c4de;margin-bottom:4px">⏳ دور: '+(names[game.current]||"")+'</div>' : ''))
-      +(game.winner?'<div style="font-size:20px;font-weight:900;color:#ffdf6e;margin:6px 0">🏆 الفائز: '+game.winner+'</div>':'')
-      +'<div style="flex:1 1 auto;display:grid;grid-template-areas:\'top top top\' \'left cards right\' \'bottom bottom bottom\';grid-template-columns:'+(names.length>=3?"58px":"0px")+' minmax(0,1fr) '+(names.length>=4?"58px":"0px")+';grid-template-rows:auto minmax(0,1fr) auto;gap:6px;margin:4px 0;min-height:0">'
-      +'<div style="grid-area:top;display:flex;justify-content:center;min-width:0">'+topP+'</div>'
-      +'<div style="grid-area:left;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0">'+leftP+'</div>'
-      +'<div style="grid-area:cards;min-width:0;display:flex"><div style="flex:1 1 auto;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(9,1fr);gap:5px;margin:0;min-height:0;min-width:0">'+cardsHTML+'</div></div>'
-      +'<div style="grid-area:right;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0">'+rightP+'</div>'
-      +'<div style="grid-area:bottom;display:flex;justify-content:center;min-width:0">'+bottomP+'</div></div>'
-      +'<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap"><button id="bc-leave-game" style="border:0;border-radius:14px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;background:#c62828;color:#fff">🚪 مغادرة الغرفة</button>'
-      +'<button id="bc-home2" style="border:0;border-radius:14px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;background:#455a64;color:#fff">🏠 الرئيسية</button></div>'
-    );
-    // خلفية المستوى
-    let ov=document.getElementById("bc-online-overlay"); if(ov) ov.style.background=levelBg;
-    document.querySelectorAll(".bc-card-btn").forEach(function(b){
-      b.onclick=function(){
-        if(!myTurn){ toast("⏳ مش دورك"); return; }
-        let idx=parseInt(b.getAttribute("data-card"),10);
-        playSound("flip");
-        sendSafe({ type:"play_card", code:myCode, index:idx });
-      };
-    });
-    function goHome(){
-      gameStarted=false; game=null; lastShownCardId=-1;
-      sendSafe({ type:"leave", code:myCode }); myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1;
-      closeOverlay(); setTimeout(closeReactModal,100);
+      g.lastMsg = msg;
+      // هل انتهت الطاولة؟
+      if(g.cards.every(x=>x.opened)){
+        let scores = getScores(room);
+        let max = Math.max(...scores);
+        let winners = room.players.filter(p=> (p._score||0)===max);
+        g.winner = winners.length===1 ? winners[0]._name : "تعادل";
+        g.lastMsg = winners.length===1 ? ("🏆 الفائز هو " + g.winner + " برصيد " + max + " نقطة") : ("🏆 تعادل برصيد " + max);
+        broadcastAll(room, { type:"game_over", code:room.code, game: publicGame(room) });
+        return;
+      }
+      nextTurn(room, steps);
+      g.lastMsg = msg + " - دور " + getNames(room)[g.current];
+      broadcastAll(room, { type:"card_revealed", code:room.code, index:idx, card:c, game: publicGame(room) });
+      return;
     }
-    function leaveRoom(){
-      gameStarted=false; game=null; lastShownCardId=-1;
-      sendSafe({ type:"leave", code:myCode }); myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1;
-      toast("👋 غادرت الغرفة"); openMenu();
-    }
-    let sb=document.getElementById("bc-sound"); if(sb) sb.onclick=function(){ soundOn=!soundOn; try{localStorage.setItem("bc_sound", soundOn?"on":"off");}catch(e){} sb.textContent=soundOn?"🔊":"🔇"; toast(soundOn?"🔊 تم تشغيل الصوت":"🔇 تم كتم الصوت"); };
-    let hb=document.getElementById("bc-home"); if(hb) hb.onclick=goHome;
-    let hb2=document.getElementById("bc-home2"); if(hb2) hb2.onclick=goHome;
-    let lb=document.getElementById("bc-leave-game"); if(lb) lb.onclick=leaveRoom;
-  }
-  function openMenu(){
-    gameStarted=false; game=null; lastShownCardId=-1;
-    menuOverlay("🌐 العب أونلاين",
-      '<p style="color:#b0c4de;font-size:14px;margin:0 0 10px">اختر عدد اللاعبين أولًا، بعدها اختر طريقة اللعب.</p>'
-      +'<label style="display:block;text-align:right;font-size:13px;color:#b0c4de;margin-bottom:4px">اسمك<br><input id="bc-name" value="'+myName+'" placeholder="اكتب اسمك" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:15px;margin-top:5px"></label>'
-      +countSelector()
-      +'<button id="bc-quick" style="'+btn("#ff8f00","#ffc107","#222")+'">🔍 بحث عن لاعبين - لعب سريع</button>'
-      +'<button id="bc-create" style="'+btn("#1976d2","#2196f3","#fff")+'">➕ إنشاء غرفة</button>'
-      +'<button id="bc-join-open" style="'+btn("#455a64","#607d8b","#fff")+'">🔑 دخول لغرفة بالكود</button>'
-      +'<button id="bc-close" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.15);color:#fff;margin:5px 0">⬅️ رجوع للصفحة الأولى</button>'
-    );
-    bindCountSelector();
-    document.getElementById("bc-name").addEventListener("input", function(e){ saveName(e.target.value); });
-    document.getElementById("bc-close").onclick=function(){ closeOverlay(); setTimeout(closeReactModal,100); };
-    document.getElementById("bc-quick").onclick=openSearch;
-    document.getElementById("bc-join-open").onclick=openJoin;
-    document.getElementById("bc-create").onclick=function(){
-      toast("⏳ جاري إنشاء غرفة لـ "+maxPlayers+" لاعبين...");
-      connect().then(function(){ sendSafe({ type:"create", name:myName, maxPlayers:maxPlayers }); myCode=""; playerCount=1; playerNames=[myName]; myIndex=0; setTimeout(openWaiting,400); }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
-    };
-  }
-  function openSearch(){
-    menuOverlay("🔍 جاري البحث عن لاعبين...",
-      '<div style="font-size:50px;margin:10px 0">🔍</div><p style="color:#b0c4de;font-size:14px;margin:0 0 10px">نبحث عن <b style="color:#ffc107">'+maxPlayers+' لاعبين</b>...</p><div style="font-size:13px;color:#ffc107;font-weight:700">⏳ البحث جاري... (1 / '+maxPlayers+')</div><button id="bc-cancel-search" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:14px 0 0">إلغاء البحث</button>'
-    );
-    connect().then(function(){ sendSafe({ type:"quick_play", name:myName, maxPlayers:maxPlayers }); }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
-    document.getElementById("bc-cancel-search").onclick=function(){ sendSafe({ type:"cancel_search" }); openMenu(); };
-  }
-  function openJoin(){
-    menuOverlay("🔑 دخول لغرفة",
-      '<p style="color:#b0c4de;font-size:14px;margin:0 0 16px">أدخل رقم الغرفة المكوّن من 6 أرقام</p><input id="bc-join-code" inputmode="numeric" placeholder="000000" style="width:100%;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:22px;text-align:center;letter-spacing:4px;font-weight:800"><button id="bc-join-go" style="'+btn("#1976d2","#2196f3","#fff")+'">دخول</button><button id="bc-join-back" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.15);color:#fff;margin:5px 0">⬅️ رجوع</button>'
-    );
-    let inp=document.getElementById("bc-join-code"); inp.focus();
-    inp.addEventListener("input", function(){ inp.value=inp.value.replace(/[^0-9]/g,"").slice(0,6); });
-    document.getElementById("bc-join-back").onclick=openMenu;
-    document.getElementById("bc-join-go").onclick=function(){
-      let code=inp.value.trim(); if(code.length<4){ toast("أدخل رقم الغرفة بشكل صحيح"); return; }
-      myCode=code; toast("⏳ جاري الدخول..."); clearTimeout(joinTimer);
-      joinTimer=setTimeout(function(){ toast("❌ لم يرد السيرفر - تأكد من الرقم وحاول مجددًا"); },4000);
-      connect().then(function(){ sendSafe({ type:"join", code:code, roomCode:code, name:myName }); playerCount=1; setTimeout(openWaiting,400); }).catch(function(){ toast("❌ مقدرتش نتصل بالسيرفر"); });
-    };
-  }
-  function openWaiting(){
-    menuOverlay("غرفتك جاهزة",
-      '<p style="color:#b0c4de;font-size:14px;margin:0 0 8px">أرسل الرقم لأصدقائك</p><div id="bc-code" style="font-size:32px;font-weight:900;letter-spacing:4px;border:2px dashed #ffc107;border-radius:14px;padding:14px 8px;margin:8px 0">••••••</div><div id="bc-count" style="font-size:16px;font-weight:700">👥 اللاعبون: 1 / '+maxPlayers+'</div><div id="bc-names" style="font-size:14px;margin:10px 0;line-height:1.8;color:#fff"></div><button id="bc-start-btn" disabled style="'+btn("#ff8f00","#ffc107","#222")+'opacity:0.5">⏳ نستنى...</button><button id="bc-cancel" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:5px 0">إلغاء</button>'
-    );
-    updateWaiting();
-    document.getElementById("bc-cancel").onclick=function(){ sendSafe({ type:"leave", code:myCode }); openMenu(); };
-    document.getElementById("bc-start-btn").onclick=function(){ if(playerCount<maxPlayers){ toast("مازال ناقص "+(maxPlayers-playerCount)+" لاعب"); return; } sendSafe({ type:"start", code:myCode }); };
-  }
-  function handleOpen(e){
-    let b=e.target&&e.target.closest?e.target.closest("button"):null; if(!b) return;
-    let txt=(b.textContent||"").trim();
-    if(txt==="العب أونلاين"||(txt.indexOf("العب أونلاين")!==-1&&txt.length<30)){ e.preventDefault(); setTimeout(openMenu,80); }
-  }
-  document.addEventListener("click", handleOpen, false);
-  console.log("✅ Battle Online V15 - original look + sound + effects");
-})();
+  });
+  ws.on("close", ()=>{ removeFromAllQueues(ws); removeFromRoom(ws); });
+});
+server.listen(PORT, ()=>{ console.log("WS V11 FINAL - shared board - listening on " + PORT); });
