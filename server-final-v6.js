@@ -162,12 +162,12 @@ function advanceTurn(room, steps){
 function startTurnTimer(room){
   clearTimer(room);
   if(!room.game || room.game.winner) return;
-  // البوت يناظر 10 ثواني قبل ما يلعب، كيما البنادم يخمم - باش ما يبانش بلي بوت و ما يخلطش الأمور
+  // البوت يناظر 6 ثواني قبل ما يلعب، كيما البنادم يخمم - ماشي بسرعة و ماشي بطيئة
   let cur = room.players[room.game.current];
   if(cur && cur._isBot){
-    room._deadline = Date.now() + 11000;
-    // 10 ثواني + شوية عشوائية (9.5 - 10.5 ثانية) باش ما يبانش روبوتي
-    room._timer = setTimeout(()=>{ botTakeTurn(room); }, 9500 + Math.floor(Math.random()*1000));
+    room._deadline = Date.now() + 7000;
+    // 6 ثواني + شوية عشوائية (5.5 - 6.5 ثانية) باش ما يبانش روبوتي
+    room._timer = setTimeout(()=>{ botTakeTurn(room); }, 5500 + Math.floor(Math.random()*1000));
     return;
   }
   room._deadline = Date.now() + TURN_MS;
