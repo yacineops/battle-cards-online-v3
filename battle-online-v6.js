@@ -18,6 +18,30 @@ let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=fal
     if(!t){ t=document.createElement("div"); t.id="bc-online-toast"; t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:99px;font-weight:700;z-index:99999;max-width:92%;text-align:center;font-size:14px"; document.body.appendChild(t); }
     t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>{t.style.display="none";},4000);
   }
+  // ألوان الشعارات = نفس المود العادي (hue-rotate من buildDeck تاع الأوفلاين)
+  function bcIconFor(c){
+    if(!c) return "⭐";
+    let icon = c.icon || "⭐";
+    if(icon.indexOf("<span") !== -1) return icon;
+    let f = null;
+    if(c.type==="reverse") f = "hue-rotate(210deg) saturate(1.8)";
+    else if(c.type==="shuffle") f = "hue-rotate(120deg) saturate(1.8)";
+    else if(c.type==="exchangePlayers") f = "hue-rotate(-30deg) saturate(1.9)";
+    else if(c.type==="shield") f = "hue-rotate(210deg) saturate(1.6)";
+    else if(c.type==="bomb") f = "hue-rotate(0deg) saturate(1.8)";
+    else if(c.type==="bombShield") f = "hue-rotate(-50deg) saturate(1.9)";
+    else if(c.type==="stealShield" || c.type==="shieldSteal") f = "hue-rotate(40deg) saturate(1.9)";
+    else if(c.type==="reverseBalances") f = "hue-rotate(260deg) saturate(1.9)";
+    else if(c.type==="shieldReverse") f = "hue-rotate(260deg) saturate(1.7)";
+    else if(c.type==="shieldSkip") f = "hue-rotate(-30deg) saturate(1.9)";
+    else if(c.type==="randomBalances") f = "hue-rotate(260deg) saturate(1.9)";
+    else if(c.type==="bombAll") f = "hue-rotate(260deg) saturate(1.9)";
+    else if(c.type==="randomPoints") f = "hue-rotate(140deg) saturate(1.9)";
+    if(c.type==="cancelShuffle" || c.type==="cancelReplay")
+      return '<span style="display:inline-block;text-decoration:line-through;text-decoration-thickness:3px;text-decoration-color:#e53935">'+icon+'</span>';
+    if(!f) return icon;
+    return '<span style="display:inline-block;filter:'+f+'">'+icon+'</span>';
+  }
   function closeOverlay(){ let o=document.getElementById("bc-online-overlay"); if(o) o.remove(); }
   function closeReactModal(){
     try{
@@ -147,7 +171,7 @@ ws.onclose=()=>{
     el.className="bigCardOverlay";
     el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1500;display:flex;align-items:center;justify-content:center;padding:20px";
     el.innerHTML='<div class="bigCard" style="width:260px;height:360px;border-radius:24px;background:'+bg+';color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 4px #fff;animation:bigIn .55s;padding:18px;text-align:center;position:relative">'
-      + '<div style="font-size:92px;line-height:1">'+(c.icon||"⭐")+'</div>'
+      + '<div style="font-size:92px;line-height:1">'+bcIconFor(c)+'</div>'
       + (c.type==="points"?'<div style="font-size:52px;font-weight:900">'+(c.icon||"")+'</div>':"")
       + '<div style="font-size:26px;font-weight:900">'+title+'</div>'
       + '<div style="font-size:15px;color:#444;font-weight:600">'+sub+'</div>'
@@ -201,7 +225,7 @@ ws.onclose=()=>{
         let rows=ranking.map((r,i)=>'<div style="display:flex;align-items:center;gap:10px;background:'+(r.isMe?"rgba(0,230,118,.18)":"rgba(255,255,255,.06)")+';border:'+(r.isMe?"2px solid #00e676":"1px solid rgba(255,255,255,.12)")+';border-radius:14px;padding:10px 12px"><div style="font-size:24px;min-width:32px;text-align:center">'+(medals[i]||(i+1))+'</div><div style="flex:1;text-align:right;font-weight:900;font-size:16px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.name+(r.isMe?" <span style=\"font-size:11px;color:#00e676\">• أنت</span>":"")+'</div><div style="font-weight:900;font-size:17px;color:#ffdf6e;white-space:nowrap">'+r.score+' نقطة</div></div>').join("");
         let lc=game.lastCard;
         let lcBg=!lc?"#fff":(lc.type==="points"?((lc.value||0)>0?"linear-gradient(135deg,#c8e6c9,#a5d6a7)":"linear-gradient(135deg,#ffcdd2,#ef9a9a)"):"linear-gradient(135deg,#fff3e0,#ffcc80)");
-        let lcHtml=!lc?"":('<div style="margin:14px auto 4px;width:110px;height:150px;border-radius:16px;background:'+lcBg+';border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.4)"><div style="font-size:48px;line-height:1">'+(lc.icon||"⭐")+'</div><div style="font-size:12px;font-weight:900;color:#111;margin-top:6px;padding:0 6px;text-align:center">'+(lc.label||"")+'</div></div><div style="font-size:12px;color:#b0c4de;margin-bottom:2px">🃏 آخر بطاقة تم كشفها</div>');
+        let lcHtml=!lc?"":('<div style="margin:14px auto 4px;width:110px;height:150px;border-radius:16px;background:'+lcBg+';border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.4)"><div style="font-size:48px;line-height:1">'+bcIconFor(lc)+'</div><div style="font-size:12px;font-weight:900;color:#111;margin-top:6px;padding:0 6px;text-align:center">'+(lc.label||"")+'</div></div><div style="font-size:12px;color:#b0c4de;margin-bottom:2px">🃏 آخر بطاقة تم كشفها</div>');
         let confetti=Array.from({length:24},(_,i)=>{ let em=["🎉","⭐","🏆","🎊","✨"][i%5]; let left=Math.floor(Math.random()*100); let delay=(Math.random()*1.5).toFixed(2); let dur=(2.5+Math.random()*2).toFixed(2); return '<div style="position:absolute;top:-30px;left:'+left+'%;font-size:20px;animation:bcFall '+dur+'s linear '+delay+'s infinite"> '+em+' </div>'; }).join("");
         let page=document.createElement("div"); page.id="bc-winner-page";
         page.style.cssText="position:fixed;inset:0;background:linear-gradient(180deg,#0f2027,#203a43,#2c5364);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto";
@@ -243,7 +267,7 @@ ws.onclose=()=>{
       return '<div data-card="'+i+'" class="card'+openedCls+'" style="height:auto;min-height:0;border-radius:10px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .45s;transform:'+(c.opened?"rotateY(180deg)":"none")+'">'
         + '<div class="face back" style="position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#263f59,#3a5a7c);border:2px solid #5a7d9c;font-size:20px;backface-visibility:hidden">🃏</div>'
         + '<div class="face front" style="position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+frontBg+';color:#111;border:2px solid #fff;transform:rotateY(180deg);backface-visibility:hidden;overflow:hidden">'
-        + '<div style="font-size:'+(c.type==="points"?"30px":"26px")+';font-weight:900;line-height:1;text-align:center">'+(c.icon||"⭐")+'</div>'
+        + '<div style="font-size:'+(c.type==="points"?"30px":"26px")+';font-weight:900;line-height:1;text-align:center">'+bcIconFor(c)+'</div>'
         + '</div></div>';
     }).join("");
     // نفس تخطيط domino-board الأصلي
@@ -317,7 +341,7 @@ ws.onclose=()=>{
         let openedList=(game.cards||[]).map((cc,ii)=>({cc,ii})).filter(x=>x.cc.opened);
         let picker=document.createElement("div"); picker.id="bc-replay-picker";
         picker.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1700;display:flex;align-items:center;justify-content:center;padding:20px";
-        let items=openedList.map(x=>'<button data-replay-pick="'+x.ii+'" style="border:3px solid #00e676;border-radius:16px;padding:16px 10px;background:#fff;color:#111;cursor:pointer;min-width:92px;min-height:92px;display:flex;align-items:center;justify-content:center"><div style="font-size:28px;line-height:1;font-weight:900">'+(x.cc.icon||"⭐")+'</div></button>').join("");
+        let items=openedList.map(x=>'<button data-replay-pick="'+x.ii+'" style="border:3px solid #00e676;border-radius:16px;padding:16px 10px;background:#fff;color:#111;cursor:pointer;min-width:92px;min-height:92px;display:flex;align-items:center;justify-content:center"><div style="font-size:28px;line-height:1;font-weight:900">'+bcIconFor(x.cc)+'</div></button>').join("");
         picker.innerHTML='<div style="background:#1e2a38;border-radius:22px;padding:22px;width:100%;max-width:360px;text-align:center;color:#fff"><div style="font-size:44px">♻️</div><div style="font-size:19px;font-weight:900;margin:6px 0">اختر بطاقة مكشوفة لإعادة تفعيلها</div><div style="color:#b0c4de;font-size:13px;margin-bottom:12px">اضغط على واحدة من البطاقات</div><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-height:320px;overflow-y:auto">'+items+'</div><button id="bc-replay-cancel" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;background:#455a64;color:#fff;margin-top:14px">❌ إلغاء</button></div>';
         document.body.appendChild(picker);
         picker.querySelectorAll("[data-replay-pick]").forEach(b=>{
