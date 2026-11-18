@@ -1,5 +1,5 @@
-// battle-online-v6.js - V15 FINAL - نفس طاولة الأصلية بالضبط، الأونلاين غير مزامنة
-// لا يرسم طاولة جديدة: يعيد استخدام نفس domino-board + card + player تاع index.html الأصلي
+// battle-online-v16.js - V16 - إصلاح 6 مشاكل حقيقية من V15
+// 1) زر العب مرة أخرى  2) Timer  3) Rejoin Loop  4) XSS  5) البدء للـ Host فقط  6) Double Pick Race
 (function(){
   "use strict";
   const WS_URL = "wss://battle-cards-online-v2.onrender.com";
@@ -7,10 +7,18 @@
   try{ myName = localStorage.getItem("bc_player_name")||""; }catch(e){}
   try{ myFlag = localStorage.getItem("bc_player_flag")||"🇩🇿"; }catch(e){}
   function saveFlag(f){ myFlag=f; try{localStorage.setItem("bc_player_flag",f);}catch(e){} }
+  // FIX 4 - XSS: نهرب كل نص جاي من لاعب آخر قبل ما يتحط في innerHTML
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
   function findMyIndex(names){ if(!names) return -1; for(let i=0;i<names.length;i++){ let n=names[i]||""; if(n===myName || n===myFlag+" "+myName || n.endsWith(" "+myName)) return i; } return -1; }
   if(!myName) myName="اللاعب 1";
   let _rejoinData=null; try{ _rejoinData=JSON.parse(sessionStorage.getItem("bc_rejoin")||"null"); if(_rejoinData) sessionStorage.removeItem("bc_rejoin"); }catch(e){}
-let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false, _timerTotal=20;
+  let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=false, game=null, myIndex=-1, _lastBigKey="", _doublePicks=[], _timerInt=null, _pendingDelayUntil=0, _lastPendingKey="", _timerDeadline=0, _timerLoopStarted=false, _timerTotal=20;
+  // FIX 2 - Timer: نحفظ الدور + آخر بطاقة باش ما نعاودوش نصفر الـ deadline
+  let _lastTimerTurn=-1, _lastTimerCardKey="";
+  // FIX 3 - Rejoin: عدد المحاولات يبقى في sessionStorage باش ما يدورش للأبد
+  function getRejoinTries(){ try{ return parseInt(sessionStorage.getItem("bc_rejoin_tries")||"0",10)||0; }catch(e){ return 0; } }
+  function setRejoinTries(n){ try{ sessionStorage.setItem("bc_rejoin_tries", String(n)); }catch(e){} }
+  function clearRejoinTries(){ try{ sessionStorage.removeItem("bc_rejoin_tries"); }catch(e){} }
 
   function saveName(n){ myName=(n||"").trim().slice(0,20)||"اللاعب 1"; try{localStorage.setItem("bc_player_name",myName);}catch(e){} }
   function toast(msg){
@@ -18,7 +26,6 @@ let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=fal
     if(!t){ t=document.createElement("div"); t.id="bc-online-toast"; t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:99px;font-weight:700;z-index:99999;max-width:92%;text-align:center;font-size:14px"; document.body.appendChild(t); }
     t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>{t.style.display="none";},4000);
   }
-  // ألوان الشعارات = نفس المود العادي (hue-rotate من buildDeck تاع الأوفلاين)
   function bcIconFor(c){
     if(!c) return "⭐";
     let icon = c.icon || "⭐";
@@ -38,9 +45,9 @@ let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=fal
     else if(c.type==="bombAll") f = "hue-rotate(260deg) saturate(1.9)";
     else if(c.type==="randomPoints") f = "hue-rotate(140deg) saturate(1.9)";
     if(c.type==="cancelShuffle" || c.type==="cancelReplay")
-      return '<span style="display:inline-block;text-decoration:line-through;text-decoration-thickness:3px;text-decoration-color:#e53935">'+icon+'</span>';
-    if(!f) return icon;
-    return '<span style="display:inline-block;filter:'+f+'">'+icon+'</span>';
+      return '<span style="display:inline-block;text-decoration:line-through;text-decoration-thickness:3px;text-decoration-color:#e53935">'+esc(icon)+'</span>';
+    if(!f) return esc(icon);
+    return '<span style="display:inline-block;filter:'+f+'">'+esc(icon)+'</span>';
   }
   function closeOverlay(){ let o=document.getElementById("bc-online-overlay"); if(o) o.remove(); }
   function closeReactModal(){
@@ -49,7 +56,6 @@ let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=fal
       if(backs.length) backs[backs.length-1].click();
     }catch(e){}
   }
-  // ---- overlays للقائمة فقط: إنشاء / دخول / انتظار ----
   function showOverlay(title, innerHTML){
     closeOverlay();
     let o=document.createElement("div"); o.id="bc-online-overlay";
@@ -75,7 +81,6 @@ let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=fal
       ws=new WebSocket(WS_URL);
       ws.onopen=()=>{
         resolve(ws);
-        // إذا كنا راجعين من انقطاع، نرجع لنفس الغرفة تلقائيا
         if(_rejoinData && _rejoinData.code){
           myCode=String(_rejoinData.code); myName=_rejoinData.name||myName; myFlag=_rejoinData.flag||myFlag; maxPlayers=_rejoinData.maxPlayers||maxPlayers;
           try{ ws.send(JSON.stringify({type:"rejoin", code:myCode, name:myName, flag:myFlag})); toast("🔄 جاري الرجوع للجولة..."); }catch(e){}
@@ -83,14 +88,14 @@ let maxPlayers=2, playerCount=1, playerNames=[], joinTimer=null, gameStarted=fal
         }
       };
       ws.onerror=()=>reject(new Error("WS"));
-      let _reconnectTries=0;
-ws.onclose=()=>{
-  if(!gameStarted) return;
-  if(_reconnectTries>=3){ toast("⚠️ انقطع الاتصال بالسيرفر - أعد تحميل الصفحة"); return; }
-  _reconnectTries++;
-  toast("🔄 إعادة الاتصال... ("+_reconnectTries+")");
-  setTimeout(()=>{ try{ sessionStorage.setItem("bc_rejoin", JSON.stringify({code:myCode, name:myName, flag:myFlag, maxPlayers:maxPlayers})); }catch(e){} location.reload(); }, 1500);
-};
+      // FIX 3 - Rejoin Loop: نحسب المحاولات في sessionStorage، بعد 3 نحبس و نمسح bc_rejoin
+      ws.onclose=()=>{
+        if(!gameStarted) return;
+        let tries=getRejoinTries()+1; setRejoinTries(tries);
+        if(tries>=3){ clearRejoinTries(); try{ sessionStorage.removeItem("bc_rejoin"); }catch(e){} toast("⚠️ انقطع الاتصال بالسيرفر - أعد تحميل الصفحة"); return; }
+        toast("🔄 إعادة الاتصال... ("+tries+"/3)");
+        setTimeout(()=>{ try{ sessionStorage.setItem("bc_rejoin", JSON.stringify({code:myCode, name:myName, flag:myFlag, maxPlayers:maxPlayers})); }catch(e){} location.reload(); }, 1500);
+      };
       ws.onmessage=(ev)=>{
         try{
           let d=JSON.parse(ev.data); let type=(d.type||"").toLowerCase();
@@ -109,8 +114,8 @@ ws.onclose=()=>{
             if(playerCount>=maxPlayers && !gameStarted) toast("🎉 اكتمل العدد! "+playerCount+" / "+maxPlayers);
           }
           if(type==="error"){ clearTimeout(joinTimer); toast("❌ "+(d.message||"الغرفة غير موجودة")); if(!gameStarted) setTimeout(openJoin,800); }
-          if(type==="rejoined"){ if(d.code) myCode=String(d.code); gameStarted=true; toast("✅ رجعت للجولة"); }
-          if(type==="game_started"||type==="card_revealed"||type==="game_state"){ gameStarted=true; if(d.game) game=d.game; if(playerNames) myIndex=findMyIndex(playerNames); renderGame(); playSoundForLastCard(); }
+          if(type==="rejoined"){ if(d.code) myCode=String(d.code); gameStarted=true; clearRejoinTries(); toast("✅ رجعت للجولة"); }
+          if(type==="game_started"||type==="card_revealed"||type==="game_state"){ gameStarted=true; clearRejoinTries(); if(d.game) game=d.game; if(playerNames) myIndex=findMyIndex(playerNames); renderGame(); playSoundForLastCard(); }
           if(type==="game_over"){ if(d.game) game=d.game; if(d.reason==="alone"){ game._aloneWinner=true; } renderGame(true); }
           if(type==="player_left"){ playerCount=Math.max(1,playerCount-1); if(!gameStarted) updateWaiting(); else if(game) renderGame(); }
         }catch(e){}
@@ -122,10 +127,15 @@ ws.onclose=()=>{
     let codeEl=document.getElementById("bc-code"), countEl=document.getElementById("bc-count"), namesEl=document.getElementById("bc-names"), startBtn=document.getElementById("bc-start-btn");
     if(codeEl) codeEl.textContent=myCode||"••••••";
     if(countEl) countEl.textContent="👥 اللاعبون: "+playerCount+" / "+maxPlayers;
-    if(namesEl){ namesEl.innerHTML=(playerNames&&playerNames.length?playerNames:[myFlag+" "+myName]).map((n,ii)=>"<div>✅ "+n+(ii===myIndex?" (أنت)":"")+"</div>").join(""); }
-    if(startBtn){ if(playerCount>=maxPlayers){ startBtn.disabled=false; startBtn.style.opacity="1"; startBtn.textContent="▶️ ابدأ اللعب ("+playerCount+" / "+maxPlayers+")"; } else { startBtn.disabled=true; startBtn.style.opacity="0.5"; startBtn.textContent="⏳ نستنى "+(maxPlayers-playerCount)+" لاعب... ("+playerCount+" / "+maxPlayers+")"; } }
+    if(namesEl){ namesEl.innerHTML=(playerNames&&playerNames.length?playerNames:[myFlag+" "+myName]).map((n,ii)=>"<div>✅ "+esc(n)+(ii===myIndex?" (أنت)":"")+"</div>").join(""); }
+    if(startBtn){
+      // FIX 5 - البدء للـ Host فقط (myIndex 0 = منشئ الغرفة). الباقي يشوفو انتظار.
+      let isHost=(myIndex===0);
+      if(!isHost){ startBtn.disabled=true; startBtn.style.opacity="0.5"; startBtn.textContent="⏳ نستنى صاحب الغرفة يبدا... ("+playerCount+" / "+maxPlayers+")"; }
+      else if(playerCount>=maxPlayers){ startBtn.disabled=false; startBtn.style.opacity="1"; startBtn.textContent="▶️ ابدأ اللعب ("+playerCount+" / "+maxPlayers+")"; }
+      else { startBtn.disabled=true; startBtn.style.opacity="0.5"; startBtn.textContent="⏳ نستنى "+(maxPlayers-playerCount)+" لاعب... ("+playerCount+" / "+maxPlayers+")"; }
+    }
   }
-  // ---- صوت الأصلي: نستعمل نفس ترددات اللعبة الأصلية ----
   let _audio=null;
   function playSound(kind){
     try{
@@ -153,12 +163,9 @@ ws.onclose=()=>{
     else if(c.type==="bomb") playSound("bomb");
     else playSound("special");
   }
-
-  // ===== البطاقة الكبيرة كيما العادي بالضبط =====
-  // في العادي: كي تكشف بطاقة تكبر في الوسط 260x360، اضغط في أي مكان باش تكمل
   function showBigCard(c){
     if(!c) return;
-    let key=(c.id||"")+":"+(c.type||"")+":"+(c.value||""); // لا نستعمل lastMsg هنا، وإلا تعاود تطلع وتحجب الضغط
+    let key=(c.id||"")+":"+(c.type||"")+":"+(c.value||"");
     if(key===_lastBigKey) return;
     _lastBigKey=key;
     let oldEl=document.getElementById("bc-big-card");
@@ -172,19 +179,15 @@ ws.onclose=()=>{
     el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1500;display:flex;align-items:center;justify-content:center;padding:20px";
     el.innerHTML='<div class="bigCard" style="width:260px;height:360px;border-radius:24px;background:'+bg+';color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 4px #fff;animation:bigIn .55s;padding:18px;text-align:center;position:relative">'
       + '<div style="font-size:92px;line-height:1">'+bcIconFor(c)+'</div>'
-      + (c.type==="points"?'<div style="font-size:52px;font-weight:900">'+(c.icon||"")+'</div>':"")
-      + '<div style="font-size:26px;font-weight:900">'+title+'</div>'
-      + '<div style="font-size:15px;color:#444;font-weight:600">'+sub+'</div>'
+      + (c.type==="points"?'<div style="font-size:52px;font-weight:900">'+esc(c.icon||"")+'</div>':"")
+      + '<div style="font-size:26px;font-weight:900">'+esc(title)+'</div>'
+      + '<div style="font-size:15px;color:#444;font-weight:600">'+esc(sub)+'</div>'
       + '<div style="position:absolute;bottom:14px;font-size:12px;color:#777;font-weight:700">اضغط في أي مكان للمتابعة 👆</div></div>'
       + '<style>@keyframes bigIn{0%{transform:scale(.2) rotate(-18deg);opacity:0}60%{transform:scale(1.12) rotate(3deg);opacity:1}100%{transform:scale(1)}}</style>';
     el.onclick=()=>{ el.remove(); };
     document.body.appendChild(el);
-    // كيما العادي: إذا ما ضغطش، تتسكر وحدها بعد 1.9 ثانية باش اللعب ما يحبسش
     setTimeout(()=>{ if(document.getElementById("bc-big-card")===el) el.remove(); }, 2800);
   }
-
-  // ===== الطاولة الأصلية بالضبط =====
-  // ننسخ نفس structure تاع index.html: domino-board + player domino-edge/side + card face back/front
   function shieldIcons(idx){
     let sh=(game.shields&&game.shields[idx])||{};
     let out="";
@@ -203,7 +206,7 @@ ws.onclose=()=>{
     let isCur=(idx===game.current), isMe=(idx===myIndex);
     let cls="player"+(isCur?" current":"");
     let inner='<div style="font-size:28px;line-height:1;min-height:30px;cursor:pointer">'+(["🧸","🤖","🦁","🚀"][idx%4])+'</div>'
-      + '<div style="text-align:right;min-width:0"><div style="font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</div>'
+      + '<div style="text-align:right;min-width:0"><div style="font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(name)+'</div>'
       + '<div style="font-size:10px;min-height:14px;line-height:1">—</div></div>'
       + '<div style="font-size:16px;font-weight:900;color:#ffdf6e;white-space:nowrap">'+(scores[idx]||0)+' نقطة</div>'
       + '<div style="font-size:14px;line-height:1">'+shieldIcons(idx)+'</div>'
@@ -215,28 +218,27 @@ ws.onclose=()=>{
   }
   function renderGame(isOver){
     if(!game || !game.pending || game.pending.kind!=="replay"){ let pk=document.getElementById("bc-replay-picker"); if(pk) pk.remove(); }
-    // صفحة الفائز المبهرة: ترتيب + آخر بطاقة في الوسط + كونفيتي
     if(game && game.winner && !game._aloneWinner){
       let ex=document.getElementById("bc-winner-page");
       if(!ex){
         let namesW=game.names||playerNames, scoresW=game.scores||[];
         let ranking=namesW.map((n,i)=>({name:n, score:scoresW[i]||0, isMe:(i===myIndex)})).sort((a,b)=> b.score-a.score);
         let medals=["🥇","🥈","🥉","4️⃣"];
-        let rows=ranking.map((r,i)=>'<div style="display:flex;align-items:center;gap:10px;background:'+(r.isMe?"rgba(0,230,118,.18)":"rgba(255,255,255,.06)")+';border:'+(r.isMe?"2px solid #00e676":"1px solid rgba(255,255,255,.12)")+';border-radius:14px;padding:10px 12px"><div style="font-size:24px;min-width:32px;text-align:center">'+(medals[i]||(i+1))+'</div><div style="flex:1;text-align:right;font-weight:900;font-size:16px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.name+(r.isMe?" <span style=\"font-size:11px;color:#00e676\">• أنت</span>":"")+'</div><div style="font-weight:900;font-size:17px;color:#ffdf6e;white-space:nowrap">'+r.score+' نقطة</div></div>').join("");
+        let rows=ranking.map((r,i)=>'<div style="display:flex;align-items:center;gap:10px;background:'+(r.isMe?"rgba(0,230,118,.18)":"rgba(255,255,255,.06)")+';border:'+(r.isMe?"2px solid #00e676":"1px solid rgba(255,255,255,.12)")+';border-radius:14px;padding:10px 12px"><div style="font-size:24px;min-width:32px;text-align:center">'+(medals[i]||(i+1))+'</div><div style="flex:1;text-align:right;font-weight:900;font-size:16px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.name)+(r.isMe?" <span style=\"font-size:11px;color:#00e676\">• أنت</span>":"")+'</div><div style="font-weight:900;font-size:17px;color:#ffdf6e;white-space:nowrap">'+r.score+' نقطة</div></div>').join("");
         let lc=game.lastCard;
         let lcBg=!lc?"#fff":(lc.type==="points"?((lc.value||0)>0?"linear-gradient(135deg,#c8e6c9,#a5d6a7)":"linear-gradient(135deg,#ffcdd2,#ef9a9a)"):"linear-gradient(135deg,#fff3e0,#ffcc80)");
-        let lcHtml=!lc?"":('<div style="margin:14px auto 4px;width:110px;height:150px;border-radius:16px;background:'+lcBg+';border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.4)"><div style="font-size:48px;line-height:1">'+bcIconFor(lc)+'</div><div style="font-size:12px;font-weight:900;color:#111;margin-top:6px;padding:0 6px;text-align:center">'+(lc.label||"")+'</div></div><div style="font-size:12px;color:#b0c4de;margin-bottom:2px">🃏 آخر بطاقة تم كشفها</div>');
+        let lcHtml=!lc?"":('<div style="margin:14px auto 4px;width:110px;height:150px;border-radius:16px;background:'+lcBg+';border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.4)"><div style="font-size:48px;line-height:1">'+bcIconFor(lc)+'</div><div style="font-size:12px;font-weight:900;color:#111;margin-top:6px;padding:0 6px;text-align:center">'+esc(lc.label||"")+'</div></div><div style="font-size:12px;color:#b0c4de;margin-bottom:2px">🃏 آخر بطاقة تم كشفها</div>');
         let confetti=Array.from({length:24},(_,i)=>{ let em=["🎉","⭐","🏆","🎊","✨"][i%5]; let left=Math.floor(Math.random()*100); let delay=(Math.random()*1.5).toFixed(2); let dur=(2.5+Math.random()*2).toFixed(2); return '<div style="position:absolute;top:-30px;left:'+left+'%;font-size:20px;animation:bcFall '+dur+'s linear '+delay+'s infinite"> '+em+' </div>'; }).join("");
         let page=document.createElement("div"); page.id="bc-winner-page";
         page.style.cssText="position:fixed;inset:0;background:linear-gradient(180deg,#0f2027,#203a43,#2c5364);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto";
-        page.innerHTML='<style>@keyframes bcFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:.2}} @keyframes bcPop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}</style><div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+confetti+'</div><div style="position:relative;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.2);border-radius:26px;padding:24px 18px;width:100%;max-width:380px;text-align:center;color:#fff;animation:bcPop .5s"><div style="font-size:64px;line-height:1">🏆</div><div style="font-size:14px;color:#ffdf6e;font-weight:900;margin-top:6px;letter-spacing:1px">الفائز باللعبة</div><div style="font-size:30px;font-weight:900;margin:6px 0;line-height:1.1">'+game.winner+'</div><div style="font-size:14px;color:#b0c4de">'+(game.winner===(namesW[myIndex]||"")?"🎉 مبروك! فزت باللعبة":"انتهت اللعبة - مبروك للفائز")+'</div>'+lcHtml+'<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">'+rows+'</div><button id="bc-play-again" style="width:100%;border:0;border-radius:14px;padding:14px;font-size:17px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:16px">🔄 العب مرة أخرى</button><button id="bc-winner-menu" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;margin-top:8px">🏠 القائمة الرئيسية</button></div>';
+        page.innerHTML='<style>@keyframes bcFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:.2}} @keyframes bcPop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}</style><div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+confetti+'</div><div style="position:relative;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.2);border-radius:26px;padding:24px 18px;width:100%;max-width:380px;text-align:center;color:#fff;animation:bcPop .5s"><div style="font-size:64px;line-height:1">🏆</div><div style="font-size:14px;color:#ffdf6e;font-weight:900;margin-top:6px;letter-spacing:1px">الفائز باللعبة</div><div style="font-size:30px;font-weight:900;margin:6px 0;line-height:1.1">'+esc(game.winner)+'</div><div style="font-size:14px;color:#b0c4de">'+(game.winner===(namesW[myIndex]||"")?"🎉 مبروك! فزت باللعبة":"انتهت اللعبة - مبروك للفائز")+'</div>'+lcHtml+'<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">'+rows+'</div><button id="bc-play-again" style="width:100%;border:0;border-radius:14px;padding:14px;font-size:17px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:16px">🔄 العب مرة أخرى</button><button id="bc-winner-menu" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;margin-top:8px">🏠 القائمة الرئيسية</button></div>';
         document.body.appendChild(page);
-        document.getElementById("bc-play-again").onclick=()=>{ page.remove(); let mp=maxPlayers||namesW.length; leaveRoom(); setTimeout(()=>{ maxPlayers=mp; playerCount=mp; openMenu(); setTimeout(()=>{ let b=document.getElementById("bc-quick"); if(b) b.click(); }, 300); }, 300); };
+        // FIX 1 - العب مرة أخرى: نخزن الطلب قبل الـ reload، و بعد الـ reload نكملو تلقائيا
+        document.getElementById("bc-play-again").onclick=()=>{ page.remove(); let mp=maxPlayers||namesW.length; try{ sessionStorage.setItem("bc_auto_quick", JSON.stringify({maxPlayers:mp})); }catch(e){} leaveRoom(); };
         document.getElementById("bc-winner-menu").onclick=()=>{ page.remove(); leaveRoom(); };
         let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove();
       }
     }
-    // 4) إذا بقى وحدو: فائز + زر العودة للوبي
     if(game && game.winner && game._aloneWinner){
       setTimeout(()=>{
         let old=document.getElementById("bc-alone-box"); if(old) old.remove();
@@ -250,11 +252,9 @@ ws.onclose=()=>{
     if(!game || !game.pending || game.pending.kind!=="double") _doublePicks=[];
     if(!game) return;
     if(game.lastCard) showBigCard(game.lastCard);
-    // نغلق overlay القائمة ونعرض اللعبة في نفس صفحة اللعبة، بلا overlay جديد
     closeOverlay();
     let root=document.getElementById("root");
     if(!root) return;
-    // نحفظ شاشة النتيجة الأصلية؟ لا - نرسم فقط داخل #root بنفس حاوية اللعبة الأصلية
     let names=game.names||playerNames, scores=game.scores||[], cards=game.cards||[];
     let opened=cards.filter(c=>c.opened).length;
     let myTurn=(game.current===myIndex);
@@ -270,16 +270,14 @@ ws.onclose=()=>{
         + '<div style="font-size:'+(c.type==="points"?"30px":"26px")+';font-weight:900;line-height:1;text-align:center">'+bcIconFor(c)+'</div>'
         + '</div></div>';
     }).join("");
-    // نفس تخطيط domino-board الأصلي
     let board='<div dir="rtl" style="min-height:100dvh;background:'+levelBg+';background-attachment:fixed;color:#fff;text-align:center;overflow-x:clip;box-sizing:border-box;font-family:system-ui,Tahoma,Arial,sans-serif">'
       + '<div style="height:100dvh;max-height:100dvh;display:flex;flex-direction:column;padding:8px 10px 8px;overflow:hidden;position:relative;z-index:1;box-sizing:border-box">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:18px;font-weight:800;color:#ffdf6e">'+levelLabel+' • '+(game.direction===1?"➡️":"⬅️")+' • غرفة '+myCode+'</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:18px;font-weight:800;color:#ffdf6e">'+levelLabel+' • '+(game.direction===1?"➡️":"⬅️")+' • غرفة '+esc(myCode)+'</div>'
       + '<div></div>'
       + '<div style="display:flex;gap:6px"><button class="iconBtn" id="bc-home" style="width:44px;height:44px;padding:0;font-size:20px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer">🏠</button></div></div>'
       + '<div style="height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin:6px 0 10px"><i style="display:block;height:100%;background:linear-gradient(90deg,#00e676,#ffc107);border-radius:99px;transition:width .5s;width:'+Math.round(opened/cards.length*100)+'%"></i></div>'
-      + '' // نحينا جملة تم كشف - بلا فائدة، لربح المساحة
-      + '<div id="bc-pend-msg" style="min-height:30px;margin:2px 0;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:center">'+(game.lastMsg||"")+'</div>'
-      + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+(game.winner?("🏆 الفائز: "+game.winner):(myTurn?"⭐ دورك - اكشف بطاقة واحدة":"⏳ دور: "+(names[game.current]||"")))+'</div>'
+      + '<div id="bc-pend-msg" style="min-height:30px;margin:2px 0;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:center">'+esc(game.lastMsg||"")+'</div>'
+      + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+(game.winner?("🏆 الفائز: "+esc(game.winner)):(myTurn?"⭐ دورك - اكشف بطاقة واحدة":"⏳ دور: "+esc(names[game.current]||"")))+'</div>'
       + '<style>.domino-board{--domino-thickness:74px;--domino-length:min(430px,calc(100vw - 16px),calc(100dvh - 230px))}</style>'
       + '<div class="domino-board" dir="ltr" style="flex:1 1 auto;display:grid;grid-template-areas:\'top top top\' \'left cards right\' \'bottom bottom bottom\';grid-template-columns:'+(names.length>=3?"58px":"0px")+' minmax(0,1fr) '+(names.length>=4?"58px":"0px")+';grid-template-rows:auto minmax(0,1fr) auto;gap:4px;margin:2px 0;min-height:0">'
       + '<div style="grid-area:top;display:flex;justify-content:center;min-width:0">'+(names.length>2?playerHTML(2,"top"):(names.length>1?playerHTML(1,"top"):""))+'</div>'
@@ -292,10 +290,7 @@ ws.onclose=()=>{
       + (isOver?'<button class="btn secondary" id="bc-back-menu" style="border:0;border-radius:14px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#455a64,#607d8b);color:#fff">🏠 القائمة</button>':"")+'</div>'
       + '</div></div>';
     root.innerHTML=board;
-    // نفس سلوك الأصلية: الضغط على بطاقة + حالات الاختيار
     let pend = game.pending||null;
-    // 2) البطاقة الكبيرة تبقى للقراءة قبل رسالة التفعيل: 2.8 ثانية تأخير
-    // مهم: لا نحفظ pendReadyNow() كقيمة ثابتة، نحسبها لحظة الضغطة، وإلا تبقى false للأبد
     let pendKey = pend ? (pend.kind+"|"+(pend.cardId||"")+"|"+pend.actor) : "";
     if(pend && pendKey!==_lastPendingKey){ _lastPendingKey=pendKey; _pendingDelayUntil=Date.now()+2800; }
     if(!pend) _lastPendingKey="";
@@ -312,9 +307,9 @@ ws.onclose=()=>{
             if(_doublePicks.includes(idx)) _doublePicks=_doublePicks.filter(x=>x!==idx);
             else if(_doublePicks.length<2) _doublePicks.push(idx);
             else { toast("اخترت بطاقتين، اضغط تأكيد"); return; }
-            // نظهر الاختيار
             document.querySelectorAll("[data-card]").forEach(e2=>{ let ii=parseInt(e2.getAttribute("data-card"),10); e2.style.outline=_doublePicks.includes(ii)?"4px solid #00e676":"none"; });
-            if(_doublePicks.length===2){ setTimeout(()=>{ sendSafe({type:"double_pick",code:myCode,picks:_doublePicks}); _doublePicks=[]; },400); }
+            // FIX 6 - Double Race: نبعث فورا، بلا setTimeout 400ms، باش game_state ما يضيعش الاختيار
+            if(_doublePicks.length===2){ let picks=_doublePicks.slice(); _doublePicks=[]; sendSafe({type:"double_pick",code:myCode,picks:picks}); }
             return;
           }
           if(pend.kind==="double_choose"){
@@ -327,15 +322,12 @@ ws.onclose=()=>{
         sendSafe({type:"play_card",code:myCode,index:idx});
       };
     });
-    // اختيار اللاعب المستهدف: الضغط على بطاقة اللاعب
-    // إعادة التفعيل: البطاقات المكشوفة تبان بالأخضر + نافذة اختيار كبيرة
     if(pend && pend.kind==="replay" && pend.actor===myIndex){
       root.querySelectorAll("[data-card]").forEach(el=>{
         let ii=parseInt(el.getAttribute("data-card"),10);
         let cc=(game.cards||[])[ii];
         if(cc && cc.opened){ el.style.outline="4px solid #00e676"; el.style.boxShadow="0 0 18px rgba(0,230,118,.7)"; el.style.cursor="pointer"; }
       });
-      // نافذة اختيار البطاقة المكشوفة - باش ما تضطرش تضغط على البطاقة الصغيرة في الطاولة
       let oldPicker=document.getElementById("bc-replay-picker");
       if(!oldPicker && Date.now()>=_pendingDelayUntil){
         let openedList=(game.cards||[]).map((cc,ii)=>({cc,ii})).filter(x=>x.cc.opened);
@@ -352,14 +344,12 @@ ws.onclose=()=>{
     } else {
       let oldPicker=document.getElementById("bc-replay-picker"); if(oldPicker) oldPicker.remove();
     }
-    // اختيار مزدوج: البطاقتين المكشوفتين يبانو بالأخضر باش تعرف واش تختار
     if(pend && pend.kind==="double_choose" && pend.picks){
       root.querySelectorAll("[data-card]").forEach(el=>{
         let ii=parseInt(el.getAttribute("data-card"),10);
         if(pend.picks.includes(ii)){ el.style.outline="4px solid #00e676"; el.style.boxShadow="0 0 18px rgba(0,230,118,.7)"; el.style.cursor="pointer"; }
       });
     }
-    // 1) ألوان: صاحب الدور أخضر، المستهدفين أحمر
     root.querySelectorAll("[data-player-idx]").forEach(el=>{
       let pi=parseInt(el.getAttribute("data-player-idx"),10);
       if(game.pending && game.pending.kind==="exchangePlayers" && game.pending.first===pi){ el.style.outline="4px solid #ff9800"; el.style.boxShadow="0 0 0 4px rgba(255,152,0,.3), 0 0 18px rgba(255,152,0,.6)"; }
@@ -374,8 +364,6 @@ ws.onclose=()=>{
         el.onclick=()=>{ if(Date.now()<_pendingDelayUntil){ toast("⏳ اقرا البطاقة أولا..."); return; } let t=parseInt(el.getAttribute("data-player-idx"),10); if(t===myIndex && pend.kind!=="exchangePlayers"){ toast("اختر لاعب آخر"); return; } if(pend.kind==="exchangePlayers" && pend.first!=null && t===pend.first){ toast("اختر لاعب مختلف عن الأول"); return; } sendSafe({type:"choose_target",code:myCode,target:t}); };
       });
     }
-    // 3) الوقت كيما في العادي: ثابت في أعلى الشاشة باش يبان ديما حتى لو ضاق الـ header
-    // العداد: حبة صغيرة كيما في العادي + شريط رقيق، يخدم بحلقة مستقلة ما تتعاودش تتصفر مع كل رسم
     let fixed=document.getElementById("bc-timer-fixed");
     if(!fixed && !game.winner){
       fixed=document.createElement("div"); fixed.id="bc-timer-fixed";
@@ -384,8 +372,14 @@ ws.onclose=()=>{
       document.body.appendChild(fixed);
     }
     if(game.winner && fixed) fixed.remove();
-    // نحفظ deadline من السيرفر و نخدم بحلقة واحدة مستقلة
-    if(game.timeLeft!=null && !game.winner){ _timerDeadline=Date.now()+(game.timeLeft*1000); _timerTotal=game.timeLeft; }
+    // FIX 2 - Timer: نعاود نحسب الـ deadline غير كي يتبدل الدور أو البطاقة، و _timerTotal يبقى الكلي
+    if(game.timeLeft!=null && !game.winner){
+      let cardKey=game.lastCard ? ((game.lastCard.id||"")+":"+(game.lastCard.type||"")) : "";
+      if(game.current!==_lastTimerTurn || cardKey!==_lastTimerCardKey){
+        _lastTimerTurn=game.current; _lastTimerCardKey=cardKey;
+        _timerDeadline=Date.now()+(game.timeLeft*1000); _timerTotal=game.timeLeft;
+      }
+    }
     if(!_timerLoopStarted){
       _timerLoopStarted=true;
       setInterval(()=>{
@@ -402,26 +396,21 @@ ws.onclose=()=>{
         if(box){ box.style.borderColor=remain<=5?"#ff5252":"rgba(255,255,255,.28)"; }
       }, 250);
     }
-    // لا نمس حلقة العداد المستقلة هنا - هي اللي تحسب، و إلا يتعاود يتصفر
-    // العداد يتحسب في الحلقة المستقلة فوق، ما نعاودوش نصفره هنا
-    // نافذة التأكيد - تظهر بعد 2.8 ثانية (بعد قراءة البطاقة الكبيرة)
     if(pend && pend.actor===myIndex && pend.kind==="confirm"){
       let m=document.getElementById("bc-confirm-modal"); if(m) m.remove();
-      // نأجل ظهور النافذة حتى تنتهي قراءة البطاقة الكبيرة
       let waitMs=Math.max(0,_pendingDelayUntil-Date.now());
       setTimeout(()=>{
         if(!game || !game.pending || game.pending.kind!=="confirm" || game.pending.actor!==myIndex) return;
         if(document.getElementById("bc-confirm-modal")) return;
         let mod=document.createElement("div"); mod.id="bc-confirm-modal";
-      mod.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px";
-      mod.innerHTML='<div style="background:#1e2a38;border-radius:20px;padding:22px;width:100%;max-width:320px;text-align:center;color:#fff"><div style="font-size:48px">❓</div><div style="font-size:18px;font-weight:800;margin:8px 0">هل تريد تفعيل؟</div><div style="color:#b0c4de;font-size:14px">'+(game.lastMsg||"")+'</div><button id="bc-yes" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:14px">✅ نعم، فعّلها</button><button id="bc-no" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:#c62828;color:#fff;margin-top:8px">❌ لا، ألغيها</button></div>';
-      document.body.appendChild(mod);
-      document.getElementById("bc-yes").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_yes",code:myCode}); };
-      document.getElementById("bc-no").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_no",code:myCode}); };
+        mod.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px";
+        mod.innerHTML='<div style="background:#1e2a38;border-radius:20px;padding:22px;width:100%;max-width:320px;text-align:center;color:#fff"><div style="font-size:48px">❓</div><div style="font-size:18px;font-weight:800;margin:8px 0">هل تريد تفعيل؟</div><div style="color:#b0c4de;font-size:14px">'+esc(game.lastMsg||"")+'</div><button id="bc-yes" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#00c853,#00e676);color:#fff;margin-top:14px">✅ نعم، فعّلها</button><button id="bc-no" style="width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;cursor:pointer;background:#c62828;color:#fff;margin-top:8px">❌ لا، ألغيها</button></div>';
+        document.body.appendChild(mod);
+        document.getElementById("bc-yes").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_yes",code:myCode}); };
+        document.getElementById("bc-no").onclick=()=>{ mod.remove(); sendSafe({type:"confirm_no",code:myCode}); };
       }, waitMs);
     } else { let m=document.getElementById("bc-confirm-modal"); if(m) m.remove(); }
     if(pend && !pendReadyNow()){ let pe=document.getElementById("bc-pend-msg"); if(pe) pe.textContent="📖 اقرا البطاقة..."; }
-    // رسالة الاختيار
     let pendEl=document.getElementById("bc-pend-msg");
     if(pendEl){
       if(pend && !pendReadyNow()){ pendEl.textContent="📖 اقرا البطاقة..."; }
@@ -432,7 +421,6 @@ ws.onclose=()=>{
         else if(pend.kind==="exchangePlayers"){
           if(pend.first==null) pendEl.textContent="🔃 اختر اللاعب الأول للتبادل";
           else {
-            // مع لاعبين فقط، الثاني هو انت
             if((game.names||[]).length===2 && pend.first!==myIndex) pendEl.textContent="🔃 الأول هو "+(game.names[pend.first]||"")+" - اضغط عليك انت للتبادل معه";
             else pendEl.textContent="🔃 الأول هو "+(game.names[pend.first]||"")+" - اختر اللاعب الثاني";
           }
@@ -446,12 +434,11 @@ ws.onclose=()=>{
     let leave=document.getElementById("bc-leave-game"); if(leave) leave.onclick=()=>{ gameStarted=false; game=null; sendSafe({type:"leave",code:myCode}); myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1; toast("👋 غادرت الغرفة"); openMenu(); };
     let back=document.getElementById("bc-back-menu"); if(back) back.onclick=()=>{ gameStarted=false; game=null; sendSafe({type:"leave",code:myCode}); myCode=""; openMenu(); };
   }
-
   function openMenu(){ let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove(); if(_timerInt) clearInterval(_timerInt);
     gameStarted=false; game=null;
     showOverlay("🌐 العب أونلاين",
       '<p style="color:#b0c4de;font-size:14px;margin:0 0 10px">اختر عدد اللاعبين أولًا، بعدها اختر طريقة اللعب.</p>'
-      + '<label style="display:block;text-align:right;font-size:13px;color:#b0c4de;margin-bottom:4px">اسمك<br><input id="bc-name" value="'+myName+'" placeholder="اكتب اسمك" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:15px;margin-top:5px"></label>'
+      + '<label style="display:block;text-align:right;font-size:13px;color:#b0c4de;margin-bottom:4px">اسمك<br><input id="bc-name" value="'+esc(myName)+'" placeholder="اكتب اسمك" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:15px;margin-top:5px"></label>'
       + '<div style="margin:8px 0 12px"><div style="font-size:13px;color:#b0c4de;text-align:right;margin-bottom:6px">🏳️ علمك</div><div id="bc-flags" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-height:120px;overflow-y:auto;padding:6px;background:rgba(255,255,255,.06);border-radius:12px"></div></div>'
       + countSelector()
       + '<button id="bc-quick" style="'+btn("#ff8f00","#ffc107","#222")+'">🔍 بحث عن لاعبين - لعب سريع</button>'
@@ -469,6 +456,11 @@ ws.onclose=()=>{
       toast("⏳ جاري إنشاء غرفة لـ "+maxPlayers+" لاعبين...");
       connect().then(()=>{ sendSafe({type:"create",name:myName,flag:myFlag,maxPlayers:maxPlayers}); myCode=""; playerCount=1; playerNames=[myName]; myIndex=0; setTimeout(openWaiting,400); }).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
     };
+    // FIX 1 - تكملة العب مرة أخرى بعد الـ reload
+    try{
+      let aq=JSON.parse(sessionStorage.getItem("bc_auto_quick")||"null");
+      if(aq){ sessionStorage.removeItem("bc_auto_quick"); maxPlayers=aq.maxPlayers||maxPlayers; setTimeout(()=>{ let b=document.getElementById("bc-quick"); if(b) b.click(); }, 400); }
+    }catch(e){}
   }
   function openSearch(){
     showOverlay("🔍 جاري البحث عن لاعبين...",
@@ -476,7 +468,7 @@ ws.onclose=()=>{
       + '<div style="font-size:13px;color:#ffc107;font-weight:700">⏳ البحث جاري... (1 / '+maxPlayers+')</div>'
       + '<button id="bc-cancel-search" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:14px 0 0">إلغاء البحث</button>');
     connect().then(()=>sendSafe({type:"quick_play",name:myName,flag:myFlag,maxPlayers:maxPlayers})).catch(()=>toast("❌ مقدرتش نتصل بالسيرفر"));
-    document.getElementById("bc-cancel-search").onclick=()=>{ sendSafe({type:"cancel_search"}); openMenu(); };
+    document.getElementById("bc-cancel-search").onclick=()=>{ try{ sessionStorage.removeItem("bc_auto_quick"); }catch(e){} sendSafe({type:"cancel_search"}); openMenu(); };
   }
   function openJoin(){
     showOverlay("🔑 دخول لغرفة",
@@ -504,12 +496,12 @@ ws.onclose=()=>{
       + '<button id="bc-cancel" style="width:100%;border:0;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;margin:5px 0">إلغاء</button>');
     updateWaiting();
     document.getElementById("bc-cancel").onclick=()=>{ sendSafe({type:"leave",code:myCode}); openMenu(); };
-    document.getElementById("bc-start-btn").onclick=()=>{ if(playerCount<maxPlayers){ toast("مازال ناقص "+(maxPlayers-playerCount)+" لاعب"); return; } sendSafe({type:"start",code:myCode}); };
+    // FIX 5 - حماية إضافية في الواجهة: غير الـ Host ما يقدرش يبعث start
+    document.getElementById("bc-start-btn").onclick=()=>{ if(myIndex!==0){ toast("⏳ غير صاحب الغرفة يقدر يبدا"); return; } if(playerCount<maxPlayers){ toast("مازال ناقص "+(maxPlayers-playerCount)+" لاعب"); return; } sendSafe({type:"start",code:myCode}); };
   }
-  function leaveRoom(){ _timerDeadline=0; let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove();
+  function leaveRoom(){ _timerDeadline=0; _lastTimerTurn=-1; _lastTimerCardKey=""; let fx=document.getElementById("bc-timer-fixed"); if(fx) fx.remove();
     gameStarted=false; game=null; myCode=""; playerCount=1; playerNames=[myName]; myIndex=-1; _lastBigKey=""; _lastPendingKey=""; _pendingDelayUntil=0;
     try{ if(ws) ws.close(); ws=null; }catch(e){}
-    // رجوع للصفحة الأولى الأصلية
     location.reload();
   }
   function handleOpen(e){
@@ -519,7 +511,6 @@ ws.onclose=()=>{
     if(txt==="العب أونلاين" || (txt.indexOf("العب أونلاين")!==-1 && txt.length<30)){ e.preventDefault(); setTimeout(openMenu,80); }
   }
   document.addEventListener("click",handleOpen,false);
-  // إذا رجعنا من انقطاع، نتصل تلقائيا و نرجع للجولة بلا ما نضغط والو
   if(_rejoinData && _rejoinData.code){ setTimeout(()=>{ connect().catch(()=>{}); }, 300); }
-  console.log("✅ Battle Online V15 - نفس طاولة الأصلية");
+  console.log("✅ Battle Online V16 - 6 إصلاحات");
 })();
