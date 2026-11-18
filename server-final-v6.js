@@ -1,4 +1,5 @@
-// server-final-v6.js - V16 - كل البطاقات تخدم + وقت 20 ثانية
+// server-final-v17.js - V17 - حماية Host + نقل Host + تصحيح تايمر البوت
+// مبني على V16، ما تبدل والو آخر
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -32,9 +33,8 @@ function normCount(n){ n=parseInt(n,10); if(n===3) return 3; if(n===4) return 4;
 function getNames(room){ return room.players.map((p)=> (p._flag ? p._flag+" " : "") + (p._name || "اللاعب 1")); }
 function getScores(room){ return room.players.map((p)=> p._score || 0); }
 function getShields(room){ return room.players.map((p)=> p._shields || newShields()); }
-// أعلام اللاعبين - بلا إسرائيل
 const FLAGS=["🇩🇿","🇲🇦","🇹🇳","🇪🇬","🇱🇾","🇸🇦","🇦🇪","🇶🇦","🇰🇼","🇯🇴","🇱🇧","🇵🇸","🇮🇶","🇸🇾","🇾🇪","🇫🇷","🇪🇸","🇮🇹","🇩🇪","🇬🇧","🇵🇹","🇳🇱","🇧🇪","🇨🇭","🇹🇷","🇺🇸","🇨🇦","🇧🇷","🇦🇷","🇲🇽","🇷🇺","🇺🇦","🇵🇱","🇸🇪","🇳🇴","🇩🇰","🇯🇵","🇰🇷","🇨🇳","🇮🇳","🇦🇺","🇿🇦","🇳🇬","🇰🇪","🇸🇳","🇨🇲","🇬🇭","🌍","⭐"];
-function randomFlag(used){ let pool=FLAGS.filter(f=> !used.includes(f)); if(pool.length===0) pool=FLAGS; return pool[Math.floor(Math.random()*pool.length)]; }
+function randomFlag(used){ let pool=FLAGS.filter(f=> !used.includes(f)); if(pool.length===0) pool=FLAGS; return pool[Math.floor(Math.random()*(pool.length))]; }
 function newShields(){ return {shield:0,bombShield:0,stealShield:0,resetShield:0,reflect:0,shieldReverse:0,shieldSkip:0,goldenShield:0,cancelShuffle:0,cancelReplay:0,freeze:0}; }
 function removeFromAllQueues(ws){ ["2","3","4"].forEach((k)=>{ queues[k]=queues[k].filter((p)=>p!==ws); }); }
 function clearTimer(room){ if(room._timer){ clearTimeout(room._timer); room._timer=null; } }
@@ -47,15 +47,15 @@ function removeFromRoom(ws){
   if(!room) return;
   clearTimer(room);
   room.players = room.players.filter((p)=>p!==ws);
+  // FIX V17 - نقل الـ Host: إذا خرج الـ Host، الأول في القائمة يولي Host
+  if(room.host === ws){ room.host = room.players[0] || null; }
   if(room.players.length===0){ rooms.delete(ws._roomCode); }
   else {
     if(room.game && room.game.current >= room.players.length) room.game.current = 0;
     broadcast(room, { type:"room_update", code:room.code, players:room.players.length, count:room.players.length, maxPlayers:room.maxPlayers, names:getNames(room) });
     broadcast(room, { type:"player_left", code:room.code, players:room.players.length, maxPlayers:room.maxPlayers, names:getNames(room) });
-    // مع البوتات: إذا ما بقاش حتى لاعب حقيقي، نحذف الغرفة (البوتات وحدهم ما يلعبوش)
     let realLeft = room.players.filter(pp=> !pp._isBot);
     if(realLeft.length===0){ rooms.delete(ws._roomCode); return; }
-    // إذا بقى لاعب حقيقي واحد و ما كاينش بوتات: يحسب فائز. إذا كاين بوتات معاه، يكمل يلعب ضدهم، ما هوش وحدو
     if(room.game && !room.game.winner && room.players.length===1 && realLeft.length===1){
       clearTimer(room);
       room.game.winner = room.players[0]._name;
@@ -157,7 +157,6 @@ function advanceTurn(room, steps){
   let guard = 0;
   for(let s=0;s<steps && guard<10;s++){
     cur = (cur + g.direction + n) % n;
-    // تجميد: إذا اللاعب مجمد، نقص دور تجميد و فوتو
     let sh = room.players[cur]._shields || newShields();
     if(sh.freeze>0){ sh.freeze--; room.players[cur]._shields=sh; g.lastMsg = "🧊 تم تخطي دور "+room.players[cur]._name+" بسبب التجميد"; s--; guard++; continue; }
     guard++;
@@ -167,18 +166,16 @@ function advanceTurn(room, steps){
 function startTurnTimer(room){
   clearTimer(room);
   if(!room.game || room.game.winner) return;
-  // البوت يناظر 6 ثواني قبل ما يلعب، كيما البنادم يخمم - ماشي بسرعة و ماشي بطيئة
   let cur = room.players[room.game.current];
   if(cur && cur._isBot){
-    room._deadline = Date.now() + 7000;
-    // 6 ثواني + شوية عشوائية (5.5 - 6.5 ثانية) باش ما يبانش روبوتي
+    // FIX V17 - deadline يوافق وقت البوت الحقيقي (5.5-6.5s)
+    room._deadline = Date.now() + 6500;
     room._timer = setTimeout(()=>{ try{ botTakeTurn(room); }catch(e){ console.error('bot timer error', e); try{ room.game.pending=null; }catch(_){} finishTurn(room); } }, 5500 + Math.floor(Math.random()*1000));
     return;
   }
   room._deadline = Date.now() + TURN_MS;
   room._timer = setTimeout(()=>{
     const g = room.game; if(!g || g.winner) return;
-    // إذا كان هناك اختيار معلق، نلغيه و نفوت الدور
     if(g.pending){
       g.pending = null;
       g.lastMsg = "⏱️ انتهى الوقت - تم إلغاء الاختيار";
@@ -217,7 +214,8 @@ function tryMatch(maxPlayers){
     while(players.length < maxPlayers && q.length>0){ const p=q.shift(); if(p.readyState===1) players.push(p); }
     if(players.length < maxPlayers){ players.forEach((p)=> q.unshift(p)); break; }
     const code = makeCode();
-    const room = { code, maxPlayers, players, game:null, _timer:null, _deadline:0 };
+    // FIX V17 - Host = أول لاعب في الغرفة
+    const room = { code, maxPlayers, players, game:null, _timer:null, _deadline:0, host: players[0] };
     rooms.set(code, room);
     players.forEach((p)=>{ p._roomCode=code; p._score=0; p._shields=newShields(); });
     const names = getNames(room);
@@ -231,7 +229,6 @@ function startGame(room){
   broadcastAll(room, { type:"game_started", code:room.code, maxPlayers:room.maxPlayers, names:getNames(room), game: publicGame(room) });
   startTurnTimer(room);
 }
-// تطبيق تأثير بطاقة بدون اختيار (تستعمل لإعادة التفعيل و الاختيار المزدوج)
 function applySimple(room, actorIdx, c, cbDone){
   const g = room.game; const actor = room.players[actorIdx];
   const shieldMap = {shield:"shield",bombShield:"bombShield",stealShield:"stealShield",resetShield:"resetShield",reflect:"reflect",shieldReverse:"shieldReverse",shieldSkip:"shieldSkip",goldenShield:"goldenShield",cancelShuffle:"cancelShuffle",cancelReplay:"cancelReplay"};
@@ -249,7 +246,6 @@ function applySimple(room, actorIdx, c, cbDone){
   }
   if(c.type==="doubleSelf"){ if((actor._score||0)>0){ actor._score=(actor._score||0)*2; g.lastMsg="✖️2 تضاعف رصيد "+actor._name+" 🎉"; } else { g.lastMsg="✖️2 رصيد "+actor._name+" سالب أو صفر، ما تضاعفش"; } return cbDone(false); }
   if(c.type==="reset"){
-    // تأكيد في الأصل، هنا نطبق مباشرة بعد التأكيد من العميل
     room.players.forEach((p,i)=>{ if(i===actorIdx) return; let s=p._shields; if((s.goldenShield||0)>0) s.goldenShield--; else if((s.resetShield||0)>0) s.resetShield--; else p._score=0; });
     g.lastMsg="🧹 تم تصفير الأرصدة ما عدا المحميين بالدروع"; return cbDone(false);
   }
@@ -265,9 +261,7 @@ function applySimple(room, actorIdx, c, cbDone){
   }
   if(c.type==="randomPoints"){ let arr=[-10,-5,-2,1,3,5,7,10]; let v=arr[Math.floor(Math.random()*arr.length)]; if(v<0 && (actor._shields.shield||0)>0){ actor._shields.shield--; g.lastMsg="🛡️ "+actor._name+" استخدم درع النقاط وألغى خسارة "+Math.abs(v)+" نقطة عشوائية"; return cbDone(false); } actor._score=(actor._score||0)+v; g.lastMsg="🎲 "+actor._name+" "+(v>0?"حصل على +":"خسر ")+Math.abs(v)+" نقطة عشوائية"; return cbDone(false); }
   if(c.type==="randomBalances"){
-    // الدرع الذهبي يثبت رصيد صاحبو، نخلط غير الباقيين
     let idxs=room.players.map((p,i)=>i).filter(i=> i!==actorIdx && !((room.players[i]._shields.goldenShield||0)>0));
-    // نستهلك الذهبي للمحميين
     room.players.forEach((p,i)=>{ if(i!==actorIdx && (p._shields.goldenShield||0)>0) p._shields.goldenShield--; });
     let scores=idxs.map(i=> room.players[i]._score||0);
     for(let i=scores.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [scores[i],scores[j]]=[scores[j],scores[i]]; }
@@ -279,7 +273,6 @@ function applySimple(room, actorIdx, c, cbDone){
     let s = room.players[nxt]._shields;
     if((s.shieldReverse||0)>0){ s.shieldReverse--; g.lastMsg="🛡️ تم إلغاء قلب الاتجاه بواسطة درع"; return cbDone(false); }
     g.direction=-g.direction;
-    // مع لاعبين 2: قلب الاتجاه = تعاود تلعب (كيما التخطي)، وإلا القلب ما عندو حتى معنى
     if(room.players.length===2){ g.lastMsg="🔄 تم قلب الاتجاه - تعاود تلعب!"; return cbDone(true); }
     g.lastMsg="🔄 تم قلب اتجاه اللعب"; return cbDone(false);
   }
@@ -287,52 +280,47 @@ function applySimple(room, actorIdx, c, cbDone){
     let nxt = nextPlayerIdx(room, actorIdx, 1);
     let s = room.players[nxt]._shields;
     if((s.shieldSkip||0)>0){ s.shieldSkip--; g.lastMsg="🛡️ درع التخطي منع التأثير"; return cbDone(false); }
-    g.lastMsg="⏭️ سيتم تخطي اللاعب التالي!"; return cbDone(true); // تخطي = دور إضافي
+    g.lastMsg="⏭️ سيتم تخطي اللاعب التالي!"; return cbDone(true);
   }
-  return cbDone(false, true); // يحتاج pending
+  return cbDone(false, true);
 }
-
-    function handleCardEffect(room, actorIdx, c, isReplay){
-      const g=room.game;
-      // بطاقات تحتاج هدف - تبادل (مع لاعب / لاعبين) يروح لسؤال تأكيد أولا، لأنو ممكن ما يفيدكش
-      const targetKinds={steal:"steal",bomb:"bomb",doubleTarget:"doubleTarget",resetPlayer:"resetPlayer",freeze:"freeze"};
-      if(targetKinds[c.type]){
-        g.pending={kind:targetKinds[c.type],actor:actorIdx,cardId:c.id,amount:c.amount||0,first:null};
-        g.lastMsg="🎯 اختر لاعبًا لتفعيل: "+(c.label||c.type);
-        broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
-      }
-      if(c.type==="exchange"||c.type==="exchangePlayers"||c.type==="shuffle"||c.type==="nextLevel"||c.type==="reset"||c.type==="stealAll"||c.type==="reverseBalances"||c.type==="bombAll"||c.type==="randomBalances"){
-        g.pending={kind:"confirm",actor:actorIdx,cardId:c.id,confirmType:c.type};
-        g.lastMsg="❓ هل تريد تفعيل: "+(c.label||c.type)+"؟";
-        broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
-      }
-      if(c.type==="replay"){
-        let openedIdx=g.cards.map((x,i)=>i).filter(i=> g.cards[i].opened && g.cards[i].id!==c.id);
-        if(openedIdx.length===0){ g.lastMsg="لا توجد بطاقة مكشوفة لإعادة تفعيلها"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
-        // إلغاء إعادة التفعيل؟ أي خصم عندو الدرع يقدر يلغي، ماشي غير اللي بعدك
-        let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelReplay||0)>0);
-        if(canceller!==-1){ room.players[canceller]._shields.cancelReplay--; g.lastMsg="🚫 أُلغيت إعادة التفعيل بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
-        g.pending={kind:"replay",actor:actorIdx,cardId:c.id};
-        g.lastMsg="♻️ اختر بطاقة مكشوفة لإعادة تفعيلها";
-        broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
-      }
-      if(c.type==="doubleChoice"){
-        let closedCount=g.cards.filter(x=> !x.opened).length;
-        if(closedCount===1){ let onlyIdx=g.cards.findIndex(x=> !x.opened); let only=g.cards[onlyIdx]; only.opened=true; g.lastCard=only; g.lastMsg="🃏 بقات بطاقة واحدة برك - فعلناها"; handleCardEffect(room, actorIdx, only, false); return; }
-        if(closedCount===0){ g.lastMsg="🃏 ما بقاوش بطاقات مغلقة"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
-        g.pending={kind:"double",actor:actorIdx,cardId:c.id};
-        g.lastMsg="🃏 اكشف بطاقتين مغلقتين ثم اختر واحدة لتفعيلها";
-        broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
-      }
-      // بطاقات مباشرة
-      let skipExtra=false;
-      applySimple(room, actorIdx, c, (extra, needsPending)=>{ skipExtra=extra; });
-      broadcastAll(room,{type:"card_revealed",code:room.code,game:publicGame(room)});
-      if(checkEnd(room)) return;
-      if(skipExtra){ advanceTurn(room, 2); broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); }
-      else finishTurn(room);
-    }
-
+function handleCardEffect(room, actorIdx, c, isReplay){
+  const g=room.game;
+  const targetKinds={steal:"steal",bomb:"bomb",doubleTarget:"doubleTarget",resetPlayer:"resetPlayer",freeze:"freeze"};
+  if(targetKinds[c.type]){
+    g.pending={kind:targetKinds[c.type],actor:actorIdx,cardId:c.id,amount:c.amount||0,first:null};
+    g.lastMsg="🎯 اختر لاعبًا لتفعيل: "+(c.label||c.type);
+    broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
+  }
+  if(c.type==="exchange"||c.type==="exchangePlayers"||c.type==="shuffle"||c.type==="nextLevel"||c.type==="reset"||c.type==="stealAll"||c.type==="reverseBalances"||c.type==="bombAll"||c.type==="randomBalances"){
+    g.pending={kind:"confirm",actor:actorIdx,cardId:c.id,confirmType:c.type};
+    g.lastMsg="❓ هل تريد تفعيل: "+(c.label||c.type)+"؟";
+    broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
+  }
+  if(c.type==="replay"){
+    let openedIdx=g.cards.map((x,i)=>i).filter(i=> g.cards[i].opened && g.cards[i].id!==c.id);
+    if(openedIdx.length===0){ g.lastMsg="لا توجد بطاقة مكشوفة لإعادة تفعيلها"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
+    let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelReplay||0)>0);
+    if(canceller!==-1){ room.players[canceller]._shields.cancelReplay--; g.lastMsg="🚫 أُلغيت إعادة التفعيل بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
+    g.pending={kind:"replay",actor:actorIdx,cardId:c.id};
+    g.lastMsg="♻️ اختر بطاقة مكشوفة لإعادة تفعيلها";
+    broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
+  }
+  if(c.type==="doubleChoice"){
+    let closedCount=g.cards.filter(x=> !x.opened).length;
+    if(closedCount===1){ let onlyIdx=g.cards.findIndex(x=> !x.opened); let only=g.cards[onlyIdx]; only.opened=true; g.lastCard=only; g.lastMsg="🃏 بقات بطاقة واحدة برك - فعلناها"; handleCardEffect(room, actorIdx, only, false); return; }
+    if(closedCount===0){ g.lastMsg="🃏 ما بقاوش بطاقات مغلقة"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
+    g.pending={kind:"double",actor:actorIdx,cardId:c.id};
+    g.lastMsg="🃏 اكشف بطاقتين مغلقتين ثم اختر واحدة لتفعيلها";
+    broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
+  }
+  let skipExtra=false;
+  applySimple(room, actorIdx, c, (extra, needsPending)=>{ skipExtra=extra; });
+  broadcastAll(room,{type:"card_revealed",code:room.code,game:publicGame(room)});
+  if(checkEnd(room)) return;
+  if(skipExtra){ advanceTurn(room, 2); broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); }
+  else finishTurn(room);
+}
 function botTakeTurn(room){
   try{
   const g=room.game; if(!g || g.winner) return;
@@ -340,30 +328,23 @@ function botTakeTurn(room){
   let actorIdx=g.current;
   let bot=room.players[actorIdx];
   if(!bot || !bot._isBot){ startTurnTimer(room); return; }
-  // إذا كان هناك اختيار معلق للبوت، يختار عشوائيا
   if(g.pending && g.pending.actor===actorIdx){
     let pend=g.pending;
     if(["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
-      // اختر هدف عشوائي (ما عدا نفسه إلا في تبادل لاعبين)
-      // تبادل لاعبين: تقدر تختار نفسك كذلك - مع لاعبين فقط، الثاني هو انت
-      // باقي البطاقات: ما تقدرش تختار نفسك
       let candidates=room.players.map((_,i)=>i).filter(i=> i!==actorIdx || pend.kind==="exchangePlayers");
       if(pend.kind==="exchangePlayers" && pend.first!=null) candidates=candidates.filter(i=> i!==pend.first);
       if(candidates.length===0){ g.pending=null; finishTurn(room); return; }
       let t=candidates[Math.floor(Math.random()*candidates.length)];
-      // نستدعي نفس منطق choose_target عبر دالة مساعدة: نحاكي الرسالة
       handleBotTarget(room, actorIdx, pend, t);
       return;
     }
     if(pend.kind==="confirm"){
       let yes=Math.random()<0.75;
-      // التبادل: البوت يخمم - إذا رصيدو صغير و رصيد الخصم كبير، التبادل يفيدو فيقبل. إذا رصيدو كبير، يرفض
       if(pend.confirmType==="exchange"){
         let myScore=room.players[actorIdx]._score||0;
         let maxOther=Math.max(...room.players.map((pp,ii)=> ii===actorIdx?-9999:(pp._score||0)));
         yes = myScore < maxOther ? (Math.random()<0.85) : (Math.random()<0.15);
       } else if(pend.confirmType==="exchangePlayers"){
-        // تبادل لاعبين: إذا الفرق بين أكبر و أصغر رصيد كبير، التبادل يخلط المتصدر فيقبل
         let scores=room.players.map(pp=> pp._score||0);
         let diff=Math.max(...scores)-Math.min(...scores);
         yes = diff>5 ? (Math.random()<0.8) : (Math.random()<0.4);
@@ -384,7 +365,6 @@ function botTakeTurn(room){
       if(closed.length===0){ g.pending=null; finishTurn(room); return; }
       if(closed.length===1){ let only=g.cards[closed[0]]; only.opened=true; g.pending=null; g.lastCard=only; g.lastMsg="🃏 بقات بطاقة واحدة برك - فعلناها"; handleCardEffect(room, actorIdx, only, false); return; }
       if(closed.length<2){ g.pending=null; finishTurn(room); return; }
-      // اختر 2 عشوائيا
       for(let i=closed.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1)); [closed[i],closed[j]]=[closed[j],closed[i]]; }
       let picks=[closed[0], closed[1]];
       g.cards[picks[0]].opened=true; g.cards[picks[1]].opened=true;
@@ -402,7 +382,6 @@ function botTakeTurn(room){
     }
     g.pending=null; finishTurn(room); return;
   }
-  // دور عادي: اختر بطاقة مغلقة عشوائية
   let closed=g.cards.map((x,i)=>i).filter(i=> !g.cards[i].opened);
   if(closed.length===0){ checkEnd(room); return; }
   let idx=closed[Math.floor(Math.random()*closed.length)];
@@ -411,7 +390,6 @@ function botTakeTurn(room){
   }catch(e){ console.error("bot error", e && e.stack || e); try{ room.game.pending=null; }catch(_){} finishTurn(room); }
 }
 function handleBotTarget(room, actorIdx, pend, targetIdx){
-  // نفس منطق choose_target لكن للبوت: نستدعي عبر إنشاء pending مؤقت ونطبق
   const g=room.game; let actor=room.players[actorIdx], target=room.players[targetIdx];
   let ts=target._shields;
   g.pending=null; clearTimer(room);
@@ -467,14 +445,11 @@ function handleBotConfirm(room, actorIdx, pend, yes){
   }
   broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room);
 }
-
-// حارس: إذا اللعبة معلقة بلا تايمر (بوت ما لعبش)، يعاود يشغل الدور بعد 5 ثواني
 setInterval(()=>{
   try{
     rooms.forEach((room)=>{
       if(!room.game || room.game.winner) return;
-      if(room._timer) return; // كاين تايمر يخدم
-      // ما كاش تايمر - الجولة معلقة، يعاود يشغلها
+      if(room._timer) return;
       console.log("watchdog: restarting stuck room", room.code, "current", room.game.current);
       startTurnTimer(room);
     });
@@ -493,7 +468,8 @@ wss.on("connection", (ws)=>{
     if(type==="create" || type==="create_room"){
       removeFromAllQueues(ws); removeFromRoom(ws);
       const maxPlayers=wanted; const code=makeCode();
-      const room={ code, maxPlayers, players:[ws], game:null, _timer:null, _deadline:0 };
+      // FIX V17 - Host = منشئ الغرفة
+      const room={ code, maxPlayers, players:[ws], game:null, _timer:null, _deadline:0, host: ws };
       rooms.set(code, room); ws._roomCode=code; ws._score=0; ws._shields=newShields();
       send(ws, { type:"room_created", code, players:1, count:1, maxPlayers, names:getNames(room) });
       return;
@@ -520,8 +496,11 @@ wss.on("connection", (ws)=>{
       if(oldIdx===-1){ send(ws,{type:"error", message:"لم يتم العثور على مقعدك"}); return; }
       let oldWs=room.players[oldIdx];
       if(oldWs._removeTimer){ clearTimeout(oldWs._removeTimer); oldWs._removeTimer=null; }
+      // FIX V17 - إذا الراجع هو الـ Host، يرجع Host
+      let wasHost = (room.host === oldWs);
       ws._name=oldWs._name; ws._flag=oldWs._flag; ws._score=oldWs._score; ws._shields=oldWs._shields; ws._roomCode=room.code; ws._isBot=false;
       room.players[oldIdx]=ws;
+      if(wasHost) room.host = ws;
       send(ws,{type:"rejoined", code:room.code, names:getNames(room)});
       broadcastAll(room,{type:"game_state", code:room.code, game:publicGame(room)});
       return;
@@ -532,29 +511,24 @@ wss.on("connection", (ws)=>{
       if(!q.includes(ws)) q.push(ws);
       send(ws, { type:"searching", maxPlayers, message:"جاري البحث..." });
       tryMatch(maxPlayers);
-      // إذا بعد 12 ثانية ما لقاش لاعبين، نكملو ببوتات بأسماء عشوائية - اللاعب ما يعرفش بلي بوتات
       if(ws._searchTimer) clearTimeout(ws._searchTimer);
       ws._searchTimer=setTimeout(()=>{
-        if(ws._roomCode) return; // لقا غرفة
-        if(!queues[String(maxPlayers)].includes(ws)) return; // لغا البحث
-        // نجمع اللاعبين الحقيقيين اللي يستناو لنفس العدد (2 أو 3 أو 4) و نكملو الباقي ببوتات
-        // مثال: 2 حقيقيين يستناو 4 -> غرفة فيها 2 حقيقيين + 2 بوتات
+        if(ws._roomCode) return;
+        if(!queues[String(maxPlayers)].includes(ws)) return;
         let waiting = queues[String(maxPlayers)].slice();
         let reals = waiting.filter(x=> x!==ws).slice(0, maxPlayers-1);
         let allReals = [ws, ...reals];
-        // نخرجهم كامل من الطابور و نلغي مؤقتاتهم
         queues[String(maxPlayers)] = queues[String(maxPlayers)].filter(x=> !allReals.includes(x));
         allReals.forEach(r=>{ if(r._searchTimer){ clearTimeout(r._searchTimer); r._searchTimer=null; } });
         const code=makeCode();
         const used=allReals.map(r=> r._name);
         const players=[...allReals];
-        // نكملو الباقي ببوتات بأسماء عشوائية حتى نوصلو للعدد المطلوب (2 أو 3 أو 4)
         for(let i=players.length;i<maxPlayers;i++){ let nm=randomBotName(used); used.push(nm); let usedFlags=players.map(pp=> pp._flag||""); let fl=randomFlag(usedFlags); let b=makeBot(nm, fl); players.push(b); }
-        const room={ code, maxPlayers, players, game:null, _timer:null, _deadline:0 };
+        // FIX V17 - Host = أول لاعب حقيقي في غرفة البوتات
+        const room={ code, maxPlayers, players, game:null, _timer:null, _deadline:0, host: allReals[0] };
         rooms.set(code, room);
         const names=getNames(room);
         allReals.forEach(r=>{ r._roomCode=code; r._score=0; r._shields=newShields(); send(r, { type:"match_found", code, players:players.length, count:players.length, maxPlayers, names }); send(r, { type:"joined", code, players:players.length, count:players.length, maxPlayers, names }); });
-        // نبدا اللعبة تلقائيا بعد ثانية، باش اللاعب ما يحسش بالفرق
         setTimeout(()=>{ if(rooms.get(code) && !room.game) startGame(room); }, 800);
       }, SEARCH_WAIT_MS);
       return;
@@ -562,23 +536,22 @@ wss.on("connection", (ws)=>{
     if(type==="cancel_search" || type==="stop_search"){ if(ws._searchTimer) clearTimeout(ws._searchTimer); removeFromAllQueues(ws); send(ws,{ type:"search_cancelled" }); return; }
     if(type==="start"){
       const room=rooms.get(ws._roomCode); if(!room) return;
+      // FIX V17 - حماية Host: غير الـ Host يقدر يبدا
+      if(room.host && ws !== room.host){ send(ws,{ type:"error", message:"غير صاحب الغرفة يقدر يبدا" }); return; }
       if(room.players.length < room.maxPlayers){ send(ws,{ type:"error", message:"مازال ناقص لاعبين" }); return; }
       if(room.game){ send(ws,{ type:"game_started", code:room.code, game: publicGame(room) }); return; }
       startGame(room); return;
     }
     if(type==="leave"){ removeFromAllQueues(ws); removeFromRoom(ws); send(ws,{ type:"left" }); return; }
-    // ---- اختيار الهدف ----
     if(type==="choose_target"){
       const room=rooms.get(ws._roomCode); if(!room||!room.game) return;
       const g=room.game; if(!g.pending) return;
       const actorIdx=room.players.indexOf(ws); if(actorIdx!==g.pending.actor) return;
       let targetIdx=parseInt(d.target,10); if(isNaN(targetIdx)||targetIdx<0||targetIdx>=room.players.length) return;
-      // تبادل لاعبين: تقدر تختار نفسك، لأنو مع لاعبين فقط يبقى غير انت كثاني واحد. باقي البطاقات ما تقدرش تختار نفسك
       if(targetIdx===actorIdx && g.pending.kind!=="exchangePlayers") { send(ws,{type:"error",message:"اختر لاعب آخر"}); return; }
       let pend=g.pending; g.pending=null; clearTimer(room);
       let actor=room.players[actorIdx], target=room.players[targetIdx];
       let ts=target._shields;
-      // الدرع الذهبي يمنع كلش
       if((ts.goldenShield||0)>0 && ["steal","bomb","doubleTarget","resetPlayer","exchange","freeze","exchangePlayers"].includes(pend.kind)){
         ts.goldenShield--; g.lastMsg="🏆 الدرع الذهبي منع التأثير على "+target._name;
         broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return;
@@ -613,7 +586,6 @@ wss.on("connection", (ws)=>{
       broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)});
       finishTurn(room); return;
     }
-    // ---- تأكيد ----
     if(type==="confirm_yes" || type==="confirm_no"){
       const room=rooms.get(ws._roomCode); if(!room||!room.game) return;
       const g=room.game; if(!g.pending||g.pending.kind!=="confirm") return;
@@ -622,7 +594,6 @@ wss.on("connection", (ws)=>{
       if(type==="confirm_no"){ g.lastMsg="تم إلغاء التفعيل"; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
       let c=g.cards.find(x=>x.id===pend.cardId);
       if(pend.confirmType==="shuffle"){
-        // إلغاء القلب؟ أي خصم عندو الدرع يقدر يلغي
         let canceller=room.players.findIndex((pp,ii)=> ii!==actorIdx && (pp._shields.cancelShuffle||0)>0);
         if(canceller!==-1){ room.players[canceller]._shields.cancelShuffle--; g.lastMsg="🚫 تم إلغاء القلب بواسطة "+room.players[canceller]._name; broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return; }
         g.cards.forEach(x=> x.opened=false);
@@ -637,32 +608,26 @@ wss.on("connection", (ws)=>{
       } else if(["reset","stealAll","reverseBalances","bombAll","randomBalances"].includes(pend.confirmType)){
         applySimple(room, actorIdx, {type:pend.confirmType}, ()=>{});
       } else if(pend.confirmType==="exchange"||pend.confirmType==="exchangePlayers"){
-        // وافق على التبادل - درك نروح لاختيار اللاعب / اللاعبين
         g.pending={kind:pend.confirmType,actor:actorIdx,cardId:pend.cardId,amount:0,first:null};
         g.lastMsg="🎯 اختر لاعبًا لتفعيل: "+(c.label||pend.confirmType);
         broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); startTurnTimer(room); return;
       }
       broadcastAll(room,{type:"game_state",code:room.code,game:publicGame(room)}); finishTurn(room); return;
     }
-    // ---- إعادة التفعيل ----
     if(type==="replay_choose"){
       const room=rooms.get(ws._roomCode); if(!room||!room.game) return;
       const g=room.game; if(!g.pending||g.pending.kind!=="replay") return;
       const actorIdx=room.players.indexOf(ws); if(actorIdx!==g.pending.actor) return;
       let idx=parseInt(d.index,10);
-      // نقبل index أو cardId
       if(isNaN(idx) && d.cardId!=null){ idx=g.cards.findIndex(x=>x.id===parseInt(d.cardId,10)); }
       if(isNaN(idx)||idx<0||idx>=g.cards.length) return;
       let chosen=g.cards[idx]; if(!chosen.opened) return;
-      // لا يمكن إعادة تفعيل بطاقة إعادة التفعيل نفسها
       if(chosen.id===g.pending.cardId){ send(ws,{type:"error",message:"اختر بطاقة أخرى غير إعادة التفعيل"}); return; }
       g.pending=null; clearTimer(room);
       g.lastCard=chosen; g.lastMsg="♻️ إعادة تفعيل: "+(chosen.label||chosen.type);
-      // نطبق تأثير البطاقة المختارة مرة أخرى (بدون pending جديد للتبسيط: إذا كانت تحتاج هدف، نرجع نطلب هدف)
       handleCardEffect(room, actorIdx, chosen, true);
       return;
     }
-    // ---- اختيار مزدوج ----
     if(type==="double_pick"){
       const room=rooms.get(ws._roomCode); if(!room||!room.game) return;
       const g=room.game; if(!g.pending||g.pending.kind!=="double") return;
@@ -671,7 +636,6 @@ wss.on("connection", (ws)=>{
       if(picks.length!==2) return;
       let c1=g.cards[picks[0]], c2=g.cards[picks[1]];
       if(!c1||!c2||c1.opened||c2.opened) return;
-      // نكشف البطاقتين باش اللاعب يشوفهم و يختار
       c1.opened=true; c2.opened=true;
       g.pending={kind:"double_choose",actor:actorIdx,picks,cardId:g.pending.cardId};
       g.lastMsg="🃏 اختر واحدة من البطاقتين لتفعيلها - الأخرى سترجع مغلقة";
@@ -683,14 +647,12 @@ wss.on("connection", (ws)=>{
       const actorIdx=room.players.indexOf(ws); if(actorIdx!==g.pending.actor) return;
       let idx=parseInt(d.index,10); if(!g.pending.picks.includes(idx)) return;
       let chosen=g.cards[idx];
-      // المختارة تبقى مكشوفة و تتفعل، الأخرى ترجع مغلقة
       g.pending.picks.forEach(i=>{ if(i!==idx) g.cards[i].opened=false; });
       g.cards[idx].opened=true;
       g.pending=null; clearTimer(room); g.lastCard=chosen;
       handleCardEffect(room, actorIdx, chosen, false);
       return;
     }
-    // ---- اللعب: كشف بطاقة ----
     if(type==="play_card" || type==="move" || type==="game"){
       const room=rooms.get(ws._roomCode); if(!room || !room.game) return;
       const g = room.game; if(g.winner) return;
@@ -707,7 +669,6 @@ wss.on("connection", (ws)=>{
   });
   ws.on("close", ()=>{
     removeFromAllQueues(ws);
-    // إذا الغرفة فيها بوتات، نستنى 15 ثانية قبل ما نحذف اللاعب، باش يقدر يرجع إذا انقطع لحظة
     let room=ws._roomCode ? rooms.get(ws._roomCode) : null;
     let hasBots = room && room.players.some(pp=> pp._isBot);
     if(hasBots && room && room.game && !room.game.winner){
@@ -720,4 +681,4 @@ wss.on("connection", (ws)=>{
     removeFromRoom(ws);
   });
 });
-server.listen(PORT, ()=>{ console.log("Server on "+PORT+" - V16 cards+timer"); });
+server.listen(PORT, ()=>{ console.log("Server on "+PORT+" - V17 host+bot-timer"); });
